@@ -1,0 +1,27 @@
+*.iml
+.gradle/
+local.properties
+.idea/
+.DS_Store
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.keystore
+*.jks
+output-metadata.json
+
+# Backend
+backend/functions/node_modules/
+backend/functions/lib/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+*.log
+
+# Real credentials must never be committed; the checked-in
+# app/google-services.json is a placeholder for the demo- project only.
+google-services-prod.json
+serviceAccountKey*.json
