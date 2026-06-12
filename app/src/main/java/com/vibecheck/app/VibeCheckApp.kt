@@ -2,6 +2,7 @@ package com.vibecheck.app
 
 import android.app.Application
 import com.vibecheck.app.data.AppContainer
+import com.vibecheck.app.data.DefaultAppContainer
 import com.vibecheck.app.data.fake.FakeAppContainer
 
 class VibeCheckApp : Application() {
@@ -10,8 +11,12 @@ class VibeCheckApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        // The Firebase-backed DefaultAppContainer is selected when
-        // USE_FAKE_DATA is false (release, or -PuseFakeData=false).
-        container = FakeAppContainer(this)
+        // Debug builds default to the in-memory demo layer; release (or
+        // -PuseFakeData=false) runs the Room + Firebase stack.
+        container = if (BuildConfig.USE_FAKE_DATA) {
+            FakeAppContainer(this)
+        } else {
+            DefaultAppContainer(this)
+        }
     }
 }
