@@ -137,3 +137,7 @@ exports.cancelMatch = match.cancelMatch;
 exports.leaveSession = match.leaveSession;
 exports.reportPeer = match.reportPeer;
 exports.closeExpiredSessions = match.closeExpiredSessions;
+
+// ---- Server-trusted entitlement (billing) ---------------------------
+const billing = require("./billing");
+exports.validatePurchase = billing.validatePurchase;

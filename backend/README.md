@@ -31,8 +31,19 @@ backend/functions/
 | `leaveSession` | Callable | Marks a session closed (participant only) |
 | `reportPeer` | Callable | Files a `reports` doc and closes the session (participant only) |
 | `closeExpiredSessions` | Schedule, every 2 min | Closes past-expiry sessions and purges their messages (ephemeral chat) |
+| `validatePurchase` | Callable | Verifies a Play subscription token via the Play Developer API and records authoritative entitlement in `users/{uid}.plusUntil` |
 
-See `match.js` for the matchmaking + session lifecycle.
+See `match.js` for matchmaking + session lifecycle, and `billing.js` +
+`entitlement.js` for server-trusted entitlement.
+
+### Server-trusted entitlement
+
+Clients cannot write `users/{uid}.plusUntil` (Firestore rules forbid changing
+it). Only `validatePurchase` grants Plus, after verifying the purchase token
+with Google Play. It uses Application Default Credentials, so the Functions
+service account must be linked in Play Console with the `androidpublisher`
+scope — no key file needed. The decision logic lives in `entitlement.js` and is
+unit-tested in `test/billing.test.js`.
 
 ## Firestore data
 

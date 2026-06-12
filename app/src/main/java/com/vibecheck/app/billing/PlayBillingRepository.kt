@@ -20,7 +20,9 @@ import com.android.billingclient.api.queryProductDetails
 import com.android.billingclient.api.queryPurchasesAsync
 import com.vibecheck.app.core.AppConfig
 import com.vibecheck.app.data.BillingRepository
+import com.vibecheck.app.data.firebase.FirebaseProvider
 import kotlin.coroutines.resume
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -176,16 +178,40 @@ class PlayBillingRepository(
             val purchases = result.purchasesList
                 .filter { it.products.contains(AppConfig.SUBSCRIPTION_PRODUCT_ID) }
             purchases.forEach { acknowledgeIfNeeded(it) }
-            entitlementLock.withLock { _isSubscribed.value = purchases.any { it.isActive() } }
+            // Server is authoritative (users/{uid}.plusUntil); local Play state is
+            // an offline-friendly fallback so the UI isn't gated by a network hop.
+            val localActive = purchases.any { it.isActive() }
+            val serverActive = serverPlusActive()
+            entitlementLock.withLock { _isSubscribed.value = serverActive || localActive }
         }
     }
 
+    /** Reads the server-recorded entitlement written by the validatePurchase function. */
+    private suspend fun serverPlusActive(): Boolean {
+        val uid = FirebaseProvider.auth.currentUser?.uid ?: return false
+        return runCatching {
+            val doc = FirebaseProvider.firestore.collection("users").document(uid).get().await()
+            (doc.getLong("plusUntil") ?: 0L) > System.currentTimeMillis()
+        }.getOrDefault(false)
+    }
+
     private suspend fun acknowledgeIfNeeded(purchase: Purchase) {
-        if (purchase.purchaseState == Purchase.PurchaseState.PURCHASED && !purchase.isAcknowledged) {
+        if (purchase.purchaseState != Purchase.PurchaseState.PURCHASED) return
+        if (!purchase.isAcknowledged) {
             val params = AcknowledgePurchaseParams.newBuilder()
                 .setPurchaseToken(purchase.purchaseToken)
                 .build()
             billingClient.acknowledgePurchase(params)
+        }
+        // Record server-trusted entitlement (best-effort; local state still
+        // gates the UI if this call can't reach the backend).
+        runCatching {
+            FirebaseProvider.functions.getHttpsCallable("validatePurchase").call(
+                mapOf(
+                    "productId" to AppConfig.SUBSCRIPTION_PRODUCT_ID,
+                    "purchaseToken" to purchase.purchaseToken,
+                )
+            ).await()
         }
     }
 
