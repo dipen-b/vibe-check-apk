@@ -3,6 +3,7 @@ package com.vibecheck.app.ui.navigation
 import com.vibecheck.app.core.model.Mood
 
 object Routes {
+    const val SPLASH = "splash"
     const val ONBOARDING = "onboarding"
     const val HOME = "home"
     const val ACTIONS = "actions/{moodName}"
