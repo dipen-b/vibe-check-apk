@@ -1,5 +1,10 @@
 package com.vibecheck.app.ui.settings
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -37,12 +42,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vibecheck.app.BuildConfig
 import com.vibecheck.app.core.model.AgeBracket
 import com.vibecheck.app.core.model.ProfileState
 import com.vibecheck.app.core.reminder.ReminderScheduler
 import com.vibecheck.app.data.AppContainer
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @Composable
@@ -66,6 +74,44 @@ fun SettingsScreen(container: AppContainer, onOpenSubscription: () -> Unit) {
     val reminderFlow = remember { ReminderScheduler.isEnabledFlow(context) }
     val reminderState by reminderFlow.collectAsStateWithLifecycle(initialValue = false)
     LaunchedEffect(reminderState) { reminderEnabled = reminderState }
+
+    // Schedules the reminder, then flags the case where notifications are switched
+    // off at the app/channel level — a granted permission still won't show anything.
+    fun scheduleReminder() {
+        reminderEnabled = true
+        ReminderScheduler.enable(context)
+        if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) {
+            scope.launch {
+                snackbar.showSnackbar("Reminder set, but notifications are off for VibeCheck — turn them on in system settings.")
+            }
+        }
+    }
+
+    // On Android 13+ the reminder is useless without POST_NOTIFICATIONS, so the
+    // toggle requests it before scheduling; the result drives the final state.
+    val notificationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) {
+            scheduleReminder()
+        } else {
+            reminderEnabled = false
+            scope.launch {
+                snackbar.showSnackbar("Allow notifications in system settings to get daily reminders.")
+            }
+        }
+    }
+
+    fun enableReminder() {
+        val needsPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        if (needsPermission) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            scheduleReminder()
+        }
+    }
 
     androidx.compose.material3.Scaffold(
         snackbarHost = { SnackbarHost(snackbar, snackbar = { Snackbar(it) }) },
@@ -121,9 +167,13 @@ fun SettingsScreen(container: AppContainer, onOpenSubscription: () -> Unit) {
                     label = "Daily reminder",
                     sub = "Nudge at 8:00 pm every day",
                     checked = reminderEnabled,
-                    onCheckedChange = {
-                        reminderEnabled = it
-                        if (it) ReminderScheduler.enable(context) else ReminderScheduler.disable(context)
+                    onCheckedChange = { wantOn ->
+                        if (wantOn) {
+                            enableReminder()
+                        } else {
+                            reminderEnabled = false
+                            ReminderScheduler.disable(context)
+                        }
                     },
                 )
             }
@@ -160,6 +210,18 @@ fun SettingsScreen(container: AppContainer, onOpenSubscription: () -> Unit) {
                     Button(onClick = onOpenSubscription, modifier = Modifier.fillMaxWidth()) {
                         Text("Upgrade — \$2.99 / £2.49 / mo")
                     }
+                    TextButton(
+                        onClick = {
+                            scope.launch {
+                                container.billingRepository.refresh()
+                                val restored = container.billingRepository.isSubscribed.first()
+                                snackbar.showSnackbar(
+                                    if (restored) "Subscription restored." else "No previous purchase found.",
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Restore purchases") }
                 }
             }
 

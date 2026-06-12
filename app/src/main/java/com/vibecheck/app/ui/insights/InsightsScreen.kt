@@ -1,5 +1,6 @@
 package com.vibecheck.app.ui.insights
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -20,12 +22,18 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +42,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -44,12 +53,18 @@ import com.vibecheck.app.data.AppContainer
 import com.vibecheck.app.ui.theme.ValenceHigh
 import com.vibecheck.app.ui.theme.ValenceLow
 import com.vibecheck.app.ui.theme.ValenceMid
+import kotlinx.coroutines.launch
 
 @Composable
 fun InsightsScreen(container: AppContainer, onUpgrade: () -> Unit) {
     var insights by remember { mutableStateOf<WeeklyInsights?>(null) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    var exporting by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbar = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
         container.insightsRepository.weeklyInsights().fold(
@@ -59,49 +74,99 @@ fun InsightsScreen(container: AppContainer, onUpgrade: () -> Unit) {
         loading = false
     }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 24.dp),
-    ) {
-        Text("Your Insights", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Medium)
-        Spacer(Modifier.height(4.dp))
-        Text(
-            "This week at a glance.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(20.dp))
+    // Builds the CSV via the repository (premium-gated there) and hands it to the
+    // system share sheet as plain text — every text-capable target honours EXTRA_TEXT
+    // (a text/csv MIME makes many targets drop it), and no FileProvider is needed.
+    val onExportCsv: () -> Unit = export@{
+        if (exporting) return@export
+        exporting = true
+        scope.launch {
+            container.insightsRepository.exportHistoryCsv().fold(
+                onSuccess = { csv ->
+                    val send = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_SUBJECT, "VibeCheck mood history")
+                        putExtra(Intent.EXTRA_TEXT, csv)
+                    }
+                    runCatching {
+                        context.startActivity(Intent.createChooser(send, "Export mood history"))
+                    }.onFailure { snackbar.showSnackbar("No app available to share the export.") }
+                },
+                onFailure = { snackbar.showSnackbar(it.message ?: "Export failed.") },
+            )
+            exporting = false
+        }
+    }
 
-        when {
-            loading -> Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+    Scaffold(
+        // HomeScaffold already applies the system-bar insets to this tab's content,
+        // so the nested Scaffold must not add them again (would double-pad the header).
+        snackbarHost = { SnackbarHost(snackbar, snackbar = { Snackbar(it) }) },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+    ) { padding ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 24.dp),
+        ) {
+            Text("Your Insights", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Medium)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "This week at a glance.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(20.dp))
+
+            when {
+                loading -> Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+                error != null -> Text(error!!, color = MaterialTheme.colorScheme.error)
+                insights != null -> InsightsContent(insights!!, onUpgrade, onExportCsv, exporting)
             }
-            error != null -> Text(error!!, color = MaterialTheme.colorScheme.error)
-            insights != null -> InsightsContent(insights!!, onUpgrade)
         }
     }
 }
 
 @Composable
-private fun InsightsContent(insights: WeeklyInsights, onUpgrade: () -> Unit) {
+private fun InsightsContent(
+    insights: WeeklyInsights,
+    onUpgrade: () -> Unit,
+    onExportCsv: () -> Unit,
+    exporting: Boolean,
+) {
+    val hasData = insights.points.any { it.averageValence != null }
+
     // Bar chart
     Text("Mood this week", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
     Spacer(Modifier.height(12.dp))
     MoodBarChart(insights.points)
-    Spacer(Modifier.height(20.dp))
 
-    // Best / Toughest chips
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        insights.bestDay?.let {
-            AssistChip(onClick = {}, label = { Text("Best: $it") })
-        }
-        insights.toughestDay?.let {
-            AssistChip(onClick = {}, label = { Text("Tough: $it") })
-        }
+    if (!hasData) {
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "No check-ins logged this week yet — your chart fills in as you check in.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
     Spacer(Modifier.height(20.dp))
+
+    // Best / Toughest chips (only meaningful once there's data)
+    if (hasData) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            insights.bestDay?.let {
+                AssistChip(onClick = {}, label = { Text("Best: $it") })
+            }
+            insights.toughestDay?.let {
+                AssistChip(onClick = {}, label = { Text("Tough: $it") })
+            }
+        }
+        Spacer(Modifier.height(20.dp))
+    }
 
     // Pattern summary
     Card(
@@ -117,7 +182,7 @@ private fun InsightsContent(insights: WeeklyInsights, onUpgrade: () -> Unit) {
     Spacer(Modifier.height(20.dp))
 
     // Premium section
-    PremiumSection(isPremium = insights.premium, onUpgrade = onUpgrade)
+    PremiumSection(isPremium = insights.premium, onUpgrade = onUpgrade, onExportCsv = onExportCsv, exporting = exporting)
 }
 
 @Composable
@@ -165,7 +230,12 @@ private fun MoodBarChart(points: List<MoodTrendPoint>) {
 }
 
 @Composable
-private fun PremiumSection(isPremium: Boolean, onUpgrade: () -> Unit) {
+private fun PremiumSection(
+    isPremium: Boolean,
+    onUpgrade: () -> Unit,
+    onExportCsv: () -> Unit,
+    exporting: Boolean,
+) {
     Text(
         "30-day history & patterns",
         style = MaterialTheme.typography.titleMedium,
@@ -216,6 +286,18 @@ private fun PremiumSection(isPremium: Boolean, onUpgrade: () -> Unit) {
                     Button(onClick = onUpgrade) { Text("Upgrade — \$2.99 / £2.49") }
                 }
             }
+        }
+    }
+
+    // CSV export is a Plus feature; only surface the control once unlocked.
+    if (isPremium) {
+        Spacer(Modifier.height(12.dp))
+        OutlinedButton(
+            onClick = onExportCsv,
+            enabled = !exporting,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(if (exporting) "Preparing export…" else "Export history (CSV)")
         }
     }
 }
