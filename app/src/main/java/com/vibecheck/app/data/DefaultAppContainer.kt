@@ -1,7 +1,7 @@
 package com.vibecheck.app.data
 
 import android.app.Application
-import com.vibecheck.app.data.fake.FakeBillingRepository
+import com.vibecheck.app.billing.PlayBillingRepository
 import com.vibecheck.app.data.fake.FakeChatRepository
 import com.vibecheck.app.data.fake.FakeInsightsRepository
 import com.vibecheck.app.data.fake.FakeMicroActionEngine
@@ -54,6 +54,7 @@ class DefaultAppContainer(app: Application) : AppContainer {
 
     // ---- Social & account module (other owner) ----
     override val chatRepository = FakeChatRepository(appScope)
-    override val billingRepository = FakeBillingRepository()
+    // Billing module owner: real Play Billing now backs production.
+    override val billingRepository = PlayBillingRepository(app, appScope)
     override val insightsRepository = FakeInsightsRepository(moodRepository, billingRepository)
 }
