@@ -1,0 +1,88 @@
+rules_version = '2';
+
+// VibeCheck Firestore security rules — deny by default.
+//
+// Privacy invariants enforced here (SOW):
+//  - Mood check-ins are anonymous: clients may NOT write a `uid` (or any
+//    identifier) onto a checkin doc, and no client can read raw checkins.
+//  - No precise coordinates: only a coarse `regionId` string is accepted.
+//  - Region aggregates are server-maintained: clients read, never write.
+//
+// Collections owned by the social/account module (matchQueue, chatSessions,
+// messages, reports) carry sensible locked defaults; that module's owner
+// refines them on their branch.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ---- Core flow ----------------------------------------------------
+
+    // Own profile only. No cross-user reads. Anonymous-auth uid is the key.
+    match /users/{uid} {
+      allow read: if isSelf(uid);
+      allow create, update: if isSelf(uid)
+        && !('email' in request.resource.data)
+        && !('phone' in request.resource.data);
+      allow delete: if isSelf(uid);
+    }
+
+    // Anonymous mood check-ins. Create-only from clients, shape-validated to
+    // guarantee anonymity; nobody reads raw checkins (the heatmap reads the
+    // aggregated `regions` collection instead). Updates/deletes are
+    // server-only (cleanup function via Admin SDK, which bypasses rules).
+    match /checkins/{checkInId} {
+      allow read: if false;
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly(['regionId', 'mood', 'valence', 'timestamp'])
+        && request.resource.data.mood is string
+        && request.resource.data.valence is number
+        && request.resource.data.valence >= 0 && request.resource.data.valence <= 1
+        && (request.resource.data.regionId == null || request.resource.data.regionId is string)
+        && request.resource.data.timestamp is number;
+      allow update, delete: if false;
+    }
+
+    // Server-maintained region aggregates. Readable by any signed-in user
+    // (the heatmap); writes only from Cloud Functions (Admin SDK).
+    match /regions/{regionId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // ---- Social / account module (owner refines) ----------------------
+
+    // Match queue: a user may only touch their own entry.
+    match /matchQueue/{uid} {
+      allow read, write: if isSelf(uid);
+    }
+
+    // Chat sessions + messages: participants only.
+    match /chatSessions/{sessionId} {
+      allow read: if isSignedIn()
+        && request.auth.uid in resource.data.participants;
+      allow write: if false; // sessions are created/closed by Cloud Functions
+
+      match /messages/{messageId} {
+        allow read: if isSignedIn()
+          && request.auth.uid in get(/databases/$(database)/documents/chatSessions/$(sessionId)).data.participants;
+        allow create: if isSignedIn()
+          && request.resource.data.senderUid == request.auth.uid;
+        allow update, delete: if false;
+      }
+    }
+
+    // Reports: a user may file (create) but never read/edit.
+    match /reports/{reportId} {
+      allow create: if isSignedIn()
+        && request.resource.data.reporterUid == request.auth.uid;
+      allow read, update, delete: if false;
+    }
+  }
+}
