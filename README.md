@@ -60,6 +60,55 @@ so you can run the whole app with **no backend**. To exercise the real stack,
 build release or pass `-PuseFakeData=false` and run the Firebase emulator
 (see [docs/SETUP.md](docs/SETUP.md)).
 
+## Architecture at a glance
+
+Every screen depends only on **interfaces** (`data/Repositories.kt`), handed to
+it by an `AppContainer`. Debug swaps in fakes; release wires the real stack.
+That single seam is why the whole app runs with no backend.
+
+```mermaid
+flowchart TD
+    UI["UI screens (Compose)\nsplash · check-in · heatmap · match/chat · insights · settings"]
+    AC{{"AppContainer\n(interfaces only)"}}
+    UI -->|reads/writes via| AC
+
+    AC -.debug USE_FAKE_DATA=true.-> FAKE["FakeAppContainer\n(in-memory demo data)"]
+    AC -.release / -PuseFakeData=false.-> REAL["DefaultAppContainer"]
+
+    REAL --> ROOM[("Room\nvibecheck.db")]
+    REAL --> DS[("DataStore\nprofile")]
+    REAL --> FS[("Firestore")]
+    REAL --> AUTH["Firebase\nAnonymous Auth"]
+    REAL --> FN["Cloud Functions"]
+
+    FN --> FS
+    subgraph Backend["backend/functions (Node 20)"]
+        FN1["rollupRegions\n(heatmap)"]
+        FN2["requestMatch /\nchat lifecycle"]
+        FN3["cleanupInactiveData\n(90-day retention)"]
+    end
+    FN --- FN1 & FN2 & FN3
+```
+
+**Check-in data flow (privacy-preserving):**
+
+```mermaid
+sequenceDiagram
+    actor U as User
+    participant CI as CheckInScreen
+    participant MR as MoodRepository
+    participant Room
+    participant FS as Firestore
+    participant CF as rollupRegions
+    U->>CI: pick mood + optional note
+    CI->>MR: submitCheckIn(mood, note)
+    MR->>Room: store full check-in (on-device history)
+    MR->>FS: anonymous doc {regionId, mood, valence, ts}\nid = SHA-256(ts + salt), NO uid
+    FS->>CF: trigger
+    CF->>FS: increment region count24h / valenceSum24h
+    Note over FS,CF: Heatmap reads only the aggregated regions —\nnever individual check-ins
+```
+
 ## Project structure
 
 ```
