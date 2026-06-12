@@ -16,8 +16,8 @@ import java.util.Locale
 import kotlinx.coroutines.tasks.await
 
 /**
- * Reads the server-maintained per-region rollups ("regionRollups/{regionId}":
- * checkInCount, sumValence — kept fresh by the rollupRegions Cloud Function).
+ * Reads the server-maintained per-region rollups ("regions/{regionId}":
+ * count24h, valenceSum24h — kept fresh by the rollupRegions Cloud Function).
  * Region resolution snaps a coarse last-known location to the nearest shipped
  * city bucket; only that bucket id ever leaves the device.
  */
@@ -30,12 +30,12 @@ class RealHeatmapRepository(
 
     override suspend fun aggregates(scope: HeatmapScope): Result<List<RegionMoodAggregate>> =
         runCatching {
-            val snapshot = firestore.collection("regionRollups").get().await()
+            val snapshot = firestore.collection("regions").get().await()
             val all = snapshot.documents.mapNotNull { doc ->
                 val region = Cities.byId(doc.id) ?: return@mapNotNull null
-                val count = (doc.getLong("checkInCount") ?: 0L).toInt()
+                val count = (doc.getLong("count24h") ?: 0L).toInt()
                 if (count <= 0) return@mapNotNull null
-                val sumValence = doc.getDouble("sumValence") ?: 0.0
+                val sumValence = doc.getDouble("valenceSum24h") ?: 0.0
                 RegionMoodAggregate(
                     region = region,
                     checkInCount = count,
