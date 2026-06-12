@@ -2,12 +2,12 @@ package com.vibecheck.app.data
 
 import android.app.Application
 import com.vibecheck.app.data.fake.FakeBillingRepository
-import com.vibecheck.app.data.fake.FakeChatRepository
 import com.vibecheck.app.data.fake.FakeInsightsRepository
 import com.vibecheck.app.data.fake.FakeMicroActionEngine
 import com.vibecheck.app.data.firebase.FirebaseProvider
 import com.vibecheck.app.data.local.ProfilePreferences
 import com.vibecheck.app.data.local.VibeCheckDatabase
+import com.vibecheck.app.data.real.RealChatRepository
 import com.vibecheck.app.data.real.RealHeatmapRepository
 import com.vibecheck.app.data.real.RealMoodRepository
 import com.vibecheck.app.data.real.RealProfileRepository
@@ -52,8 +52,15 @@ class DefaultAppContainer(app: Application) : AppContainer {
     // is the real catalogue.
     override val microActionEngine = FakeMicroActionEngine()
 
-    // ---- Social & account module (other owner) ----
-    override val chatRepository = FakeChatRepository(appScope)
+    // Anonymous chat: Firestore + callable Cloud Functions, profanity-filtered.
+    override val chatRepository = RealChatRepository(
+        auth = FirebaseProvider.auth,
+        firestore = FirebaseProvider.firestore,
+        functions = FirebaseProvider.functions,
+        moodRepository = moodRepository,
+    )
+
+    // ---- Billing + insights module (other owner) ----
     override val billingRepository = FakeBillingRepository()
     override val insightsRepository = FakeInsightsRepository(moodRepository, billingRepository)
 }

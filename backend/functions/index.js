@@ -1,9 +1,9 @@
 /**
  * VibeCheck Cloud Functions — core-flow backend.
  *
- * Owns the heatmap aggregation pipeline and the privacy-driven retention
- * cleanup. Matchmaking / chat / purchase-validation functions belong to the
- * social-account module and are added by that owner.
+ * Owns the heatmap aggregation pipeline, privacy-driven retention cleanup,
+ * and the anonymous chat matchmaking + session lifecycle (see match.js).
+ * Purchase-validation belongs to the billing module owner.
  *
  * Firestore layout (see CONTRACTS.md):
  *   checkins/{id}  { regionId, mood, valence, timestamp }   // anonymous, no uid
@@ -127,3 +127,13 @@ exports.cleanupInactiveData = onSchedule("every 24 hours", async () => {
 
   logger.info("cleanupInactiveData done", { deletedUsers, deletedCheckins });
 });
+
+// ---- Anonymous chat (match module) ----------------------------------
+// Required after initializeApp() so the Admin SDK is ready when match.js
+// calls admin.firestore() at load.
+const match = require("./match");
+exports.requestMatch = match.requestMatch;
+exports.cancelMatch = match.cancelMatch;
+exports.leaveSession = match.leaveSession;
+exports.reportPeer = match.reportPeer;
+exports.closeExpiredSessions = match.closeExpiredSessions;

@@ -2,6 +2,7 @@ package com.vibecheck.app.data.firebase
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.functions.FirebaseFunctions
 import com.vibecheck.app.BuildConfig
 
 /**
@@ -25,6 +26,14 @@ object FirebaseProvider {
         FirebaseFirestore.getInstance().also {
             if (BuildConfig.USE_FIREBASE_EMULATOR) {
                 runCatching { it.useEmulator(EMULATOR_HOST, 8080) }
+            }
+        }
+    }
+
+    val functions: FirebaseFunctions by lazy {
+        FirebaseFunctions.getInstance().also {
+            if (BuildConfig.USE_FIREBASE_EMULATOR) {
+                runCatching { it.useEmulator(EMULATOR_HOST, 5001) }
             }
         }
     }

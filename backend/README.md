@@ -26,6 +26,13 @@ backend/functions/
 | `onCheckinCreated` | Firestore `checkins/{id}` create | Live-increments the check-in's region totals so the heatmap updates within seconds |
 | `rollupRegions` | Schedule, hourly | Authoritative recompute of each region's rolling 24h `count24h` / `valenceSum24h`; self-heals the live increments and ages out old check-ins |
 | `cleanupInactiveData` | Schedule, daily | SOW retention: deletes users inactive 90+ days (doc + anon auth) and purges check-ins older than 90 days |
+| `requestMatch` | Callable | Claims a compatible waiting peer (same 2h mood window, valence within 0.2) and creates a 5-min `chatSessions` doc, or enqueues the caller in `matchQueue` |
+| `cancelMatch` | Callable | Removes the caller's `matchQueue` entry |
+| `leaveSession` | Callable | Marks a session closed (participant only) |
+| `reportPeer` | Callable | Files a `reports` doc and closes the session (participant only) |
+| `closeExpiredSessions` | Schedule, every 2 min | Closes past-expiry sessions and purges their messages (ephemeral chat) |
+
+See `match.js` for the matchmaking + session lifecycle.
 
 ## Firestore data
 
