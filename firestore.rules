@@ -27,9 +27,18 @@ service cloud.firestore {
     // Own profile only. No cross-user reads. Anonymous-auth uid is the key.
     match /users/{uid} {
       allow read: if isSelf(uid);
-      allow create, update: if isSelf(uid)
+      // A new doc can't claim entitlement; rejects PII fields too.
+      allow create: if isSelf(uid)
         && !('email' in request.resource.data)
-        && !('phone' in request.resource.data);
+        && !('phone' in request.resource.data)
+        && !('plusUntil' in request.resource.data);
+      // Updates may not change plusUntil — only the validatePurchase function
+      // (Admin SDK, bypasses rules) records entitlement. This is what makes
+      // Plus server-trusted rather than client-forgeable.
+      allow update: if isSelf(uid)
+        && !('email' in request.resource.data)
+        && !('phone' in request.resource.data)
+        && request.resource.data.get('plusUntil', 0) == resource.data.get('plusUntil', 0);
       allow delete: if isSelf(uid);
     }
 
