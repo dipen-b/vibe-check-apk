@@ -65,6 +65,7 @@ import com.vibecheck.app.core.AppConfig
 import com.vibecheck.app.core.model.AgeBracket
 import com.vibecheck.app.core.reminder.ReminderScheduler
 import com.vibecheck.app.data.AppContainer
+import com.vibecheck.app.ui.components.pressBounce
 import kotlinx.coroutines.launch
 
 private enum class OnboardingStep { WELCOME, AGE, FINISH }
@@ -196,7 +197,7 @@ private fun WelcomeStep(onContinue: () -> Unit) {
         Spacer(Modifier.weight(1f))
         Button(
             onClick = onContinue,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
+            modifier = Modifier.fillMaxWidth().height(52.dp).pressBounce(),
         ) { Text("Get started") }
         Spacer(Modifier.height(8.dp))
         Text(

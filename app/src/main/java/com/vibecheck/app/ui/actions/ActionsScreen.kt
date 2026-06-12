@@ -49,6 +49,7 @@ import com.vibecheck.app.core.model.ActionCategory
 import com.vibecheck.app.core.model.MicroAction
 import com.vibecheck.app.core.model.Mood
 import com.vibecheck.app.data.AppContainer
+import com.vibecheck.app.ui.components.pressBounce
 import kotlinx.coroutines.delay
 
 private const val DURATION_SECONDS = 120
@@ -123,7 +124,7 @@ fun ActionsScreen(container: AppContainer, mood: Mood, onDone: () -> Unit) {
                 timerRunning = true
                 secondsLeft = DURATION_SECONDS.toLong()
             },
-            modifier = Modifier.fillMaxWidth().height(52.dp),
+            modifier = Modifier.fillMaxWidth().height(52.dp).pressBounce(),
             enabled = !timerRunning,
         ) {
             Text(if (!timerRunning) "Start 2-min timer" else "Timer running…")

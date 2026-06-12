@@ -46,6 +46,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vibecheck.app.core.model.MatchState
 import com.vibecheck.app.core.model.ProfileState
 import com.vibecheck.app.data.AppContainer
+import com.vibecheck.app.ui.components.pressBounce
 import com.vibecheck.app.ui.theme.Violet
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -170,7 +171,7 @@ private fun IdleContent(onSearch: () -> Unit) {
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(20.dp))
-        Button(onClick = onSearch, modifier = Modifier.fillMaxWidth().height(52.dp)) {
+        Button(onClick = onSearch, modifier = Modifier.fillMaxWidth().height(52.dp).pressBounce()) {
             Text("Find someone")
         }
     }

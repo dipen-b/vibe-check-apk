@@ -55,6 +55,7 @@ import com.vibecheck.app.core.AppConfig
 import com.vibecheck.app.core.model.Mood
 import com.vibecheck.app.core.model.MoodCheckIn
 import com.vibecheck.app.data.AppContainer
+import com.vibecheck.app.ui.components.pressBounce
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -180,7 +181,7 @@ private fun NotYetCheckedIn(onSubmit: (Mood, String?) -> Unit) {
                 onSubmit(mood, note.trim().ifBlank { null })
             },
             enabled = canSubmit,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
+            modifier = Modifier.fillMaxWidth().height(52.dp).pressBounce(),
         ) {
             if (submitting) CircularProgressIndicator(
                 Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp,

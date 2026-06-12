@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vibecheck.app.data.AppContainer
+import com.vibecheck.app.ui.components.pressBounce
 import com.vibecheck.app.ui.theme.Violet
 import kotlinx.coroutines.launch
 
@@ -164,7 +165,7 @@ fun SubscriptionScreen(container: AppContainer, onBack: () -> Unit) {
                     }
                 },
                 enabled = !purchasing,
-                modifier = Modifier.fillMaxWidth().height(52.dp),
+                modifier = Modifier.fillMaxWidth().height(52.dp).pressBounce(),
                 colors = ButtonDefaults.buttonColors(containerColor = Violet),
             ) {
                 if (purchasing) CircularProgressIndicator(
