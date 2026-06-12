@@ -68,10 +68,11 @@ fun SplashScreen(profileState: ProfileState, onNavigate: (String) -> Unit) {
     // Heart spins in (3D flip) with a big overshoot bounce.
     val heartScale = remember { Animatable(0f) }
     val heartFlip = remember { Animatable(720f) }   // two full Y-spins on entry
-    // Title + subtitle slide up & fade, staggered.
+    // Title + subtitle zoom OUT (start huge, settle to normal) while fading in.
     val titleAlpha = remember { Animatable(0f) }
-    val titleOffset = remember { Animatable(40f) }
+    val titleZoom = remember { Animatable(2.6f) }
     val subAlpha = remember { Animatable(0f) }
+    val subZoom = remember { Animatable(2.2f) }
     val footAlpha = remember { Animatable(0f) }
 
     LaunchedEffect(Unit) {
@@ -88,15 +89,31 @@ fun SplashScreen(profileState: ProfileState, onNavigate: (String) -> Unit) {
     }
     LaunchedEffect(Unit) {
         delay(350)
-        titleAlpha.animateTo(1f, tween(600, easing = EaseOut))
+        titleAlpha.animateTo(1f, tween(650, easing = EaseOut))
     }
     LaunchedEffect(Unit) {
         delay(350)
-        titleOffset.animateTo(0f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow))
+        titleZoom.animateTo(
+            1f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow,
+            ),
+        )
     }
     LaunchedEffect(Unit) {
         delay(750)
         subAlpha.animateTo(1f, tween(600))
+    }
+    LaunchedEffect(Unit) {
+        delay(750)
+        subZoom.animateTo(
+            1f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow,
+            ),
+        )
     }
     LaunchedEffect(Unit) {
         delay(1_100)
@@ -133,6 +150,11 @@ fun SplashScreen(profileState: ProfileState, onNavigate: (String) -> Unit) {
     // Gentle side-to-side sway of the heart.
     val sway by infinite.animateFloat(
         -6f, 6f, infiniteRepeatable(tween(1600), RepeatMode.Reverse), label = "sway",
+    )
+
+    // Slow blink: heart softly fades down and back up.
+    val blink by infinite.animateFloat(
+        1f, 0.35f, infiniteRepeatable(tween(1400), RepeatMode.Reverse), label = "blink",
     )
 
     // Glowing halo breathing behind the heart.
@@ -244,7 +266,7 @@ fun SplashScreen(profileState: ProfileState, onNavigate: (String) -> Unit) {
                     )
                 }
 
-                // The heart: 3D flip entry + heartbeat + sway
+                // The heart: 3D flip entry + heartbeat + sway + slow blink
                 Text(
                     text = "💜",
                     fontSize = 84.sp,
@@ -254,6 +276,7 @@ fun SplashScreen(profileState: ProfileState, onNavigate: (String) -> Unit) {
                             scaleY = heartScale.value * beatScale
                             rotationY = heartFlip.value
                             rotationZ = sway
+                            alpha = blink
                             cameraDistance = 12f * density
                         }
                         .padding(bottom = 4.dp),
@@ -282,7 +305,8 @@ fun SplashScreen(profileState: ProfileState, onNavigate: (String) -> Unit) {
                 ),
                 modifier = Modifier.graphicsLayer {
                     alpha = titleAlpha.value
-                    translationY = titleOffset.value
+                    scaleX = titleZoom.value
+                    scaleY = titleZoom.value
                 },
             )
             Spacer(Modifier.height(10.dp))
@@ -291,7 +315,11 @@ fun SplashScreen(profileState: ProfileState, onNavigate: (String) -> Unit) {
                 fontSize = 17.sp,
                 color = Color.White.copy(alpha = 0.78f),
                 textAlign = TextAlign.Center,
-                modifier = Modifier.graphicsLayer { alpha = subAlpha.value },
+                modifier = Modifier.graphicsLayer {
+                    alpha = subAlpha.value
+                    scaleX = subZoom.value
+                    scaleY = subZoom.value
+                },
             )
         }
 
