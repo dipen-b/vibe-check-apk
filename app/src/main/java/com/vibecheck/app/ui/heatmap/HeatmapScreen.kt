@@ -155,14 +155,24 @@ fun HeatmapScreen(container: AppContainer) {
             LatLng(54.0, -2.5), 5.2f,
         )
     }
-    LaunchedEffect(scope) {
+    LaunchedEffect(scope, viewMode) {
         val (target, zoom) = when (scope) {
             ScopeChoice.LOCAL -> LatLng(54.0, -2.5) to 7f
             ScopeChoice.US -> LatLng(39.8, -98.5) to 3.6f
             ScopeChoice.UK -> LatLng(54.0, -2.5) to 5.2f
             ScopeChoice.GLOBAL -> LatLng(30.0, -30.0) to 1.8f
         }
-        cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(target, zoom))
+        val position = com.google.android.gms.maps.model.CameraPosition.fromLatLngZoom(target, zoom)
+        // CameraUpdateFactory is only initialized once a GoogleMap has been
+        // composed. The screen opens in list view, so animate() would NPE
+        // ("CameraUpdateFactory is not initialized"). Animate only when the map
+        // is visible; otherwise set the camera directly (no factory needed).
+        if (viewMode == ViewMode.MAP) {
+            runCatching { cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(target, zoom)) }
+                .onFailure { cameraPositionState.position = position }
+        } else {
+            cameraPositionState.position = position
+        }
     }
 
     Box(Modifier.fillMaxSize()) {
