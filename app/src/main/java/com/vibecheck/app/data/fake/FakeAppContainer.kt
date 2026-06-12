@@ -336,10 +336,21 @@ class FakeInsightsRepository(
         val sb = StringBuilder("timestamp_iso,mood,valence,note\n")
         history.forEach { checkIn ->
             val iso = Instant.ofEpochMilli(checkIn.timestampMillis).toString()
-            val note = checkIn.note?.replace("\"", "\"\"").orEmpty()
-            sb.append("$iso,${checkIn.mood.name},${checkIn.mood.valence},\"$note\"\n")
+            sb.append("$iso,${checkIn.mood.name},${checkIn.mood.valence},${csvField(checkIn.note.orEmpty())}\n")
         }
         return Result.success(sb.toString())
+    }
+
+    /**
+     * CSV-quote a field and neutralise spreadsheet formula injection: a cell
+     * starting with = + - @ (or tab/CR) is treated as a formula by Excel/Sheets,
+     * so prefix those with a single quote. The note is the only user-controlled
+     * field, but quoting everything is harmless.
+     */
+    private fun csvField(raw: String): String {
+        val needsGuard = raw.isNotEmpty() && raw.first() in charArrayOf('=', '+', '-', '@', '\t', '\r')
+        val guarded = if (needsGuard) "'$raw" else raw
+        return "\"" + guarded.replace("\"", "\"\"") + "\""
     }
 }
 
