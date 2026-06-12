@@ -2,12 +2,12 @@ package com.vibecheck.app.data
 
 import android.app.Application
 import com.vibecheck.app.billing.PlayBillingRepository
-import com.vibecheck.app.data.fake.FakeChatRepository
 import com.vibecheck.app.data.fake.FakeInsightsRepository
 import com.vibecheck.app.data.fake.FakeMicroActionEngine
 import com.vibecheck.app.data.firebase.FirebaseProvider
 import com.vibecheck.app.data.local.ProfilePreferences
 import com.vibecheck.app.data.local.VibeCheckDatabase
+import com.vibecheck.app.data.real.RealChatRepository
 import com.vibecheck.app.data.real.RealHeatmapRepository
 import com.vibecheck.app.data.real.RealMoodRepository
 import com.vibecheck.app.data.real.RealProfileRepository
@@ -16,12 +16,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 
 /**
- * Production container: Room + DataStore + Firebase for the core flow
- * (profile, mood, heatmap).
+ * Production container: Room + DataStore + Firebase.
  *
- * NOTE module split (2026-06): chat, billing and insights belong to the
- * social/account module and still use the fake implementations here —
- * that module's owner swaps them for real ones on their branch.
+ * Core flow (profile, mood, heatmap) and anonymous chat are real. Billing is
+ * real Play Billing (billing module). Insights still uses the fake (insights
+ * module owner swaps it on their branch); the micro-action engine is
+ * rule-based and fully on-device, so its "fake" catalogue is the real one.
  */
 class DefaultAppContainer(app: Application) : AppContainer {
 
@@ -48,13 +48,19 @@ class DefaultAppContainer(app: Application) : AppContainer {
         appScope = appScope,
     )
 
-    // The engine is rule-based and fully on-device; the "fake" catalogue
-    // is the real catalogue.
     override val microActionEngine = FakeMicroActionEngine()
 
-    // ---- Social & account module (other owner) ----
-    override val chatRepository = FakeChatRepository(appScope)
-    // Billing module owner: real Play Billing now backs production.
+    // Anonymous chat: Firestore + callable Cloud Functions, profanity-filtered.
+    override val chatRepository = RealChatRepository(
+        auth = FirebaseProvider.auth,
+        firestore = FirebaseProvider.firestore,
+        functions = FirebaseProvider.functions,
+        moodRepository = moodRepository,
+    )
+
+    // Real Play Billing backs production (billing module).
     override val billingRepository = PlayBillingRepository(app, appScope)
+
+    // Insights module owner swaps this for a real implementation on their branch.
     override val insightsRepository = FakeInsightsRepository(moodRepository, billingRepository)
 }

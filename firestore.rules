@@ -70,10 +70,22 @@ service cloud.firestore {
       allow write: if false; // sessions are created/closed by Cloud Functions
 
       match /messages/{messageId} {
+        function session() {
+          return get(/databases/$(database)/documents/chatSessions/$(sessionId)).data;
+        }
         allow read: if isSignedIn()
-          && request.auth.uid in get(/databases/$(database)/documents/chatSessions/$(sessionId)).data.participants;
+          && request.auth.uid in session().participants;
+        // Sender must be a participant, the session must still be open, and
+        // the doc shape is locked to a short text message.
         allow create: if isSignedIn()
-          && request.resource.data.senderUid == request.auth.uid;
+          && request.resource.data.senderUid == request.auth.uid
+          && request.auth.uid in session().participants
+          && session().closed == false
+          && request.resource.data.keys().hasOnly(['senderUid', 'text', 'sentAt'])
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 280
+          && request.resource.data.sentAt is number;
         allow update, delete: if false;
       }
     }
