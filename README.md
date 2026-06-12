@@ -153,10 +153,14 @@ CONTRACTS.md        architecture contract — READ THIS before coding
 
 ## Roadmap
 
+The full path to a Play Store release is tracked in **[docs/LAUNCH.md](docs/LAUNCH.md)**.
+The headline remaining items (all infrastructure/compliance, not app code):
+
 - [ ] Real Firebase project (currently the `demo-vibecheck` emulator placeholder)
 - [ ] Real Google Maps API key (map tiles are blank with the placeholder)
-- [ ] Server-trusted entitlement via the `validatePurchase` callable
-- [ ] Broader test coverage + end-to-end emulator verification
+- [x] Server-trusted entitlement via the `validatePurchase` callable
+- [ ] Play Console listing + subscription product, Privacy Policy, signed AAB
+- [ ] Broader test coverage + end-to-end verification on the real stack
 
 ## Contributing
 
