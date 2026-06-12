@@ -65,8 +65,9 @@ fun SplashScreen(profileState: ProfileState, onNavigate: (String) -> Unit) {
     }
 
     // ---- Entry choreography ----
-    // Heart drops in with a big overshoot bounce.
+    // Heart spins in (3D flip) with a big overshoot bounce.
     val heartScale = remember { Animatable(0f) }
+    val heartFlip = remember { Animatable(720f) }   // two full Y-spins on entry
     // Title + subtitle slide up & fade, staggered.
     val titleAlpha = remember { Animatable(0f) }
     val titleOffset = remember { Animatable(40f) }
@@ -81,6 +82,9 @@ fun SplashScreen(profileState: ProfileState, onNavigate: (String) -> Unit) {
                 stiffness = Spring.StiffnessLow,
             ),
         )
+    }
+    LaunchedEffect(Unit) {
+        heartFlip.animateTo(0f, tween(1100, easing = EaseOut))  // settle facing front
     }
     LaunchedEffect(Unit) {
         delay(350)
@@ -126,6 +130,26 @@ fun SplashScreen(profileState: ProfileState, onNavigate: (String) -> Unit) {
         0f, 1f, infiniteRepeatable(tween(2000, 600, LinearEasing), RepeatMode.Restart), label = "shimmer",
     )
 
+    // Gentle side-to-side sway of the heart.
+    val sway by infinite.animateFloat(
+        -6f, 6f, infiniteRepeatable(tween(1600), RepeatMode.Reverse), label = "sway",
+    )
+
+    // Glowing halo breathing behind the heart.
+    val halo by infinite.animateFloat(
+        0.85f, 1.25f, infiniteRepeatable(tween(1100), RepeatMode.Reverse), label = "halo",
+    )
+
+    // Sparkles orbiting the heart.
+    val orbit by infinite.animateFloat(
+        0f, 360f, infiniteRepeatable(tween(4200, easing = LinearEasing), RepeatMode.Restart), label = "orbit",
+    )
+
+    // Mini hearts bursting upward from the big heart.
+    val burst by infinite.animateFloat(
+        0f, 1f, infiniteRepeatable(tween(1800, easing = LinearEasing), RepeatMode.Restart), label = "burst",
+    )
+
     // Slow breathing of the background gradient.
     val bgShift by infinite.animateFloat(
         0f, 1f, infiniteRepeatable(tween(4000), RepeatMode.Reverse), label = "bg",
@@ -169,13 +193,72 @@ fun SplashScreen(profileState: ProfileState, onNavigate: (String) -> Unit) {
 
         // Centre content
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = "💜",
-                fontSize = 84.sp,
-                modifier = Modifier
-                    .scale(heartScale.value * beatScale)
-                    .padding(bottom = 4.dp),
-            )
+            Box(contentAlignment = Alignment.Center) {
+                // Breathing glow halo
+                Box(
+                    Modifier
+                        .size(150.dp)
+                        .scale(halo * heartScale.value)
+                        .background(
+                            Brush.radialGradient(
+                                listOf(
+                                    Color(0xFFB388FF).copy(alpha = 0.45f),
+                                    Color(0xFFB388FF).copy(alpha = 0.12f),
+                                    Color.Transparent,
+                                )
+                            ),
+                            CircleShape,
+                        ),
+                )
+
+                // Mini hearts bursting up from the heart
+                listOf(0f, 0.33f, 0.66f).forEachIndexed { i, phase ->
+                    val t = (burst + phase) % 1f
+                    val sideways = listOf(-34f, 6f, 38f)[i]
+                    Text(
+                        "💜",
+                        fontSize = 16.sp,
+                        modifier = Modifier
+                            .offset(x = (sideways * t).dp, y = (-70 * t - 20).dp)
+                            .scale(0.6f + 0.4f * (1f - t))
+                            .graphicsLayer { alpha = ((1f - t) * 0.8f) * heartScale.value },
+                    )
+                }
+
+                // Orbiting sparkles
+                listOf(0f, 120f, 240f).forEachIndexed { i, offsetDeg ->
+                    val angle = Math.toRadians((orbit + offsetDeg).toDouble())
+                    val radius = 74f
+                    Text(
+                        if (i == 1) "💫" else "✨",
+                        fontSize = (14 + i * 3).sp,
+                        modifier = Modifier
+                            .offset(
+                                x = (radius * kotlin.math.cos(angle)).dp,
+                                y = (radius * 0.6f * sin(angle)).dp,
+                            )
+                            .graphicsLayer {
+                                alpha = heartScale.value *
+                                    (0.55f + 0.45f * sin(Math.toRadians((orbit + offsetDeg) * 2.0)).toFloat())
+                            },
+                    )
+                }
+
+                // The heart: 3D flip entry + heartbeat + sway
+                Text(
+                    text = "💜",
+                    fontSize = 84.sp,
+                    modifier = Modifier
+                        .graphicsLayer {
+                            scaleX = heartScale.value * beatScale
+                            scaleY = heartScale.value * beatScale
+                            rotationY = heartFlip.value
+                            rotationZ = sway
+                            cameraDistance = 12f * density
+                        }
+                        .padding(bottom = 4.dp),
+                )
+            }
             Spacer(Modifier.height(20.dp))
 
             // Shimmering brand name
