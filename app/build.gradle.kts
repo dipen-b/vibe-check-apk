@@ -15,6 +15,15 @@ val localProperties = Properties().apply {
 }
 val mapsApiKey: String = localProperties.getProperty("MAPS_API_KEY") ?: "PLACEHOLDER_MAPS_API_KEY"
 
+// Release signing — read from local.properties (git-ignored) or the environment
+// (CI). When no keystore is configured, the release build falls back to debug
+// signing so `bundleRelease` still produces an (un-uploadable) artifact.
+fun secret(key: String): String? =
+    localProperties.getProperty(key) ?: System.getenv(key)
+
+val releaseStoreFile: String? = secret("RELEASE_STORE_FILE")
+val hasReleaseKeystore: Boolean = releaseStoreFile != null && rootProject.file(releaseStoreFile).exists()
+
 android {
     namespace = "com.vibecheck.app"
     compileSdk = 35
@@ -28,6 +37,17 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+    }
+
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            create("release") {
+                storeFile = rootProject.file(releaseStoreFile!!)
+                storePassword = secret("RELEASE_STORE_PASSWORD")
+                keyAlias = secret("RELEASE_KEY_ALIAS")
+                keyPassword = secret("RELEASE_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
@@ -44,6 +64,13 @@ android {
             isShrinkResources = true
             buildConfigField("boolean", "USE_FAKE_DATA", "false")
             buildConfigField("boolean", "USE_FIREBASE_EMULATOR", "false")
+            // Use the real release keystore when configured; otherwise fall back
+            // to debug signing so the build still completes (not upload-ready).
+            signingConfig = if (hasReleaseKeystore) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

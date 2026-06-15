@@ -26,7 +26,7 @@ once it's up.
 - [ ] Play developer account ($25 one-time)
 - [ ] Create the app entry (package `com.vibecheck.app`)
 - [ ] Create subscription product `vibecheck_plus_monthly` with base plans at **$2.99 / £2.49**
-- [ ] Store listing: title, short/full description, **screenshots**, feature graphic, icon
+- [ ] Store listing: title, short/full description, **screenshots**, feature graphic, icon — *draft copy: [PLAY_STORE.md](PLAY_STORE.md)*
 - [ ] Content rating questionnaire
 - [ ] **Data Safety** form (declare: anonymous, no PII, no precise location)
 - [ ] Target audience & content: **16+**
@@ -40,10 +40,11 @@ once it's up.
 - [ ] Confirm crisis helplines current (988 / 116 123)
 
 ## 4. Release engineering 🛠️
-- [ ] Create a signing keystore (owner holds the secret; configure release signing in `app/build.gradle.kts`)
-- [ ] Verify ProGuard/R8 rules against the release build (Firebase, Billing, Maps, Compose)
-- [ ] Set `versionCode` / `versionName`
-- [ ] Build a signed **AAB** (App Bundle) for upload
+- [x] Release signing wired in `app/build.gradle.kts` (reads keystore from `local.properties`/env, debug-signing fallback) — see [RELEASE.md](RELEASE.md)
+- [x] ProGuard/R8 verified against a real `bundleRelease` (minify + shrink) — AAB builds clean
+- [ ] Create the signing keystore + add secrets to `local.properties` (owner holds the secret)
+- [ ] Bump `versionCode` / `versionName` per release
+- [ ] Build the signed **AAB** with the real keystore (`./gradlew :app:bundleRelease`)
 - [ ] (Optional) CI workflow to build + run tests on PRs
 
 ## 5. Real-stack QA 🛠️ (after section 1 is live)
