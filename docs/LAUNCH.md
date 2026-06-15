@@ -32,8 +32,9 @@ once it's up.
 - [ ] Target audience & content: **16+**
 
 ## 3. Legal / compliance ⚖️
-- [ ] **Privacy Policy** hosted at a public URL (required by Play) — COPPA + UK Online Safety Act
-- [ ] Terms of Service
+- [ ] **Privacy Policy** hosted at a public URL (required by Play) — COPPA + UK Online Safety Act — *draft: [legal/PRIVACY_POLICY.md](legal/PRIVACY_POLICY.md)*
+- [ ] Terms of Service — *draft: [legal/TERMS.md](legal/TERMS.md)*
+- [ ] **Have both reviewed by a qualified lawyer** and fill in all `[PLACEHOLDER]`s
 - [ ] "Not a medical device" + crisis-resource disclaimer (already shown in-app)
 - [ ] OSA decision: does anonymous chat require **18+**? (flip `AppConfig.CHAT_REQUIRES_ADULT` if so)
 - [ ] Confirm crisis helplines current (988 / 116 123)
