@@ -101,7 +101,7 @@ fun HomeScaffold(
                 when (tab) {
                     HomeTab.CHECK_IN -> CheckInScreen(container, onCheckedIn)
                     HomeTab.HEATMAP -> HeatmapScreen(container)
-                    HomeTab.MATCH -> MatchScreen(container, onChatStarted)
+                    HomeTab.MATCH -> MatchScreen(container, onChatStarted, onOpenSubscription)
                     HomeTab.INSIGHTS -> InsightsScreen(container, onUpgrade = onOpenSubscription)
                     HomeTab.SETTINGS -> SettingsScreen(container, onOpenSubscription = onOpenSubscription)
                 }

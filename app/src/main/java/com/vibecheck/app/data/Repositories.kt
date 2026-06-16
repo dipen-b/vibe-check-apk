@@ -62,6 +62,12 @@ interface ChatRepository {
     suspend fun sendMessage(sessionId: String, text: String): Result<Unit>
     suspend fun reportPeer(sessionId: String, reason: String): Result<Unit>
     suspend fun leaveSession(sessionId: String)
+
+    /** Check if user can access match feature (not used trial or is premium). */
+    fun canAccessMatch(): Flow<Boolean>
+
+    /** Mark the free trial chat as used. */
+    suspend fun markTrialUsed()
 }
 
 interface BillingRepository {

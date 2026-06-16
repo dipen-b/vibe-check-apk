@@ -26,6 +26,7 @@ class ProfilePreferences(private val context: Context) {
         val CHAT_OPT_IN = booleanPreferencesKey("chat_opt_in")
         val CREATED_AT = longPreferencesKey("created_at")
         val ONBOARDED = booleanPreferencesKey("onboarded")
+        val TRIAL_CHAT_USED = booleanPreferencesKey("trial_chat_used")
     }
 
     /** Emits null until onboarding has completed. */
@@ -44,6 +45,10 @@ class ProfilePreferences(private val context: Context) {
         )
     }
 
+    val trialChatUsed: Flow<Boolean> = context.profileDataStore.data.map { prefs ->
+        prefs[Keys.TRIAL_CHAT_USED] ?: false
+    }
+
     suspend fun save(profile: UserProfile) {
         context.profileDataStore.edit { prefs ->
             prefs[Keys.UID] = profile.uid
@@ -53,6 +58,12 @@ class ProfilePreferences(private val context: Context) {
             prefs[Keys.CHAT_OPT_IN] = profile.chatOptIn
             prefs[Keys.CREATED_AT] = profile.createdAtMillis
             prefs[Keys.ONBOARDED] = true
+        }
+    }
+
+    suspend fun markTrialChatUsed() {
+        context.profileDataStore.edit { prefs ->
+            prefs[Keys.TRIAL_CHAT_USED] = true
         }
     }
 

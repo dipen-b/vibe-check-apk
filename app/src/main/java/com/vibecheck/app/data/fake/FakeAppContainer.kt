@@ -59,8 +59,8 @@ class FakeAppContainer(@Suppress("unused") private val app: Application) : AppCo
     override val profileRepository = FakeProfileRepository()
     override val moodRepository = FakeMoodRepository()
     override val heatmapRepository = FakeHeatmapRepository()
-    override val chatRepository = FakeChatRepository(scope)
     override val billingRepository = FakeBillingRepository()
+    override val chatRepository = FakeChatRepository(scope, billingRepository)
     override val insightsRepository = FakeInsightsRepository(moodRepository, billingRepository)
     override val microActionEngine = FakeMicroActionEngine()
 }
@@ -180,7 +180,7 @@ class FakeHeatmapRepository : HeatmapRepository {
     override suspend fun resolveMyRegion(): Result<RegionInfo> = Result.success(myRegion)
 }
 
-class FakeChatRepository(private val scope: CoroutineScope) : ChatRepository {
+class FakeChatRepository(private val scope: CoroutineScope, private val billingRepository: FakeBillingRepository) : ChatRepository {
     private val sessions = MutableStateFlow<Map<String, ChatSession>>(emptyMap())
     private val messageStore = MutableStateFlow<Map<String, List<ChatMessage>>>(emptyMap())
     private val cannedReplies = listOf(
@@ -189,6 +189,7 @@ class FakeChatRepository(private val scope: CoroutineScope) : ChatRepository {
     )
     private var replyIndex = 0
     private var autoCloseJob: Job? = null
+    private val trialUsed = MutableStateFlow(false)
 
     override fun requestMatch(): Flow<MatchState> = flow {
         emit(MatchState.Searching)
@@ -251,6 +252,15 @@ class FakeChatRepository(private val scope: CoroutineScope) : ChatRepository {
 
     override suspend fun leaveSession(sessionId: String) {
         closeSession(sessionId)
+    }
+
+    override fun canAccessMatch(): Flow<Boolean> =
+        kotlinx.coroutines.flow.combine(trialUsed, billingRepository.isSubscribed) { used, isPremium ->
+            !used || isPremium
+        }
+
+    override suspend fun markTrialUsed() {
+        trialUsed.value = true
     }
 
     private fun appendMessage(sessionId: String, fromMe: Boolean, text: String) {

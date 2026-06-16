@@ -42,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.AlertDialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vibecheck.app.core.model.MatchState
 import com.vibecheck.app.core.model.ProfileState
@@ -53,19 +54,32 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 @Composable
-fun MatchScreen(container: AppContainer, onChatStarted: (String) -> Unit) {
+fun MatchScreen(container: AppContainer, onChatStarted: (String) -> Unit, onOpenSubscription: (() -> Unit)? = null) {
     val profileState by container.profileRepository.profileState
         .collectAsStateWithLifecycle(initialValue = null)
     val profile = (profileState as? ProfileState.Ready)?.profile
     val scope = rememberCoroutineScope()
 
+    val canAccessMatch by container.chatRepository.canAccessMatch()
+        .collectAsStateWithLifecycle(initialValue = true)
+    val isSubscribed by container.billingRepository.isSubscribed
+        .collectAsStateWithLifecycle(initialValue = false)
+
     var matching by remember { mutableStateOf(false) }
     var matchState by remember { mutableStateOf<MatchState>(MatchState.Idle) }
     var chatOptIn by remember(profile) { mutableStateOf(profile?.chatOptIn ?: false) }
+    var showTrialModal by remember { mutableStateOf(false) }
 
     LaunchedEffect(chatOptIn, profile) {
         if (profile != null && chatOptIn != profile.chatOptIn) {
             container.profileRepository.setChatOptIn(chatOptIn)
+        }
+    }
+
+    // Mark trial as used when a match is successful
+    LaunchedEffect(matchState) {
+        if (matchState is MatchState.Matched && !isSubscribed && canAccessMatch) {
+            container.chatRepository.markTrialUsed()
         }
     }
 
@@ -123,33 +137,55 @@ fun MatchScreen(container: AppContainer, onChatStarted: (String) -> Unit) {
         if (chatOptIn) {
             Spacer(Modifier.height(32.dp))
 
-            when (val state = matchState) {
-                is MatchState.Idle -> IdleContent(
-                    onSearch = {
-                        matching = true
-                        matchState = MatchState.Searching
-                        container.chatRepository.requestMatch()
-                            .onEach { matchState = it }
-                            .launchIn(scope)
-                    },
-                )
-                is MatchState.Searching -> SearchingContent(
-                    onCancel = {
-                        matching = false
-                        matchState = MatchState.Idle
-                        scope.launch { container.chatRepository.cancelMatch() }
-                    },
-                )
-                is MatchState.Matched -> {
-                    LaunchedEffect(state.sessionId) { onChatStarted(state.sessionId) }
+            if (canAccessMatch) {
+                when (val state = matchState) {
+                    is MatchState.Idle -> IdleContent(
+                        onSearch = {
+                            matching = true
+                            matchState = MatchState.Searching
+                            container.chatRepository.requestMatch()
+                                .onEach { matchState = it }
+                                .launchIn(scope)
+                        },
+                    )
+                    is MatchState.Searching -> SearchingContent(
+                        onCancel = {
+                            matching = false
+                            matchState = MatchState.Idle
+                            scope.launch { container.chatRepository.cancelMatch() }
+                        },
+                    )
+                    is MatchState.Matched -> {
+                        LaunchedEffect(state.sessionId) { onChatStarted(state.sessionId) }
+                    }
+                    is MatchState.TimedOut -> TimedOutContent(onRetry = { matchState = MatchState.Idle })
+                    is MatchState.Failed -> ErrorContent(state.message, onRetry = { matchState = MatchState.Idle })
                 }
-                is MatchState.TimedOut -> TimedOutContent(onRetry = { matchState = MatchState.Idle })
-                is MatchState.Failed -> ErrorContent(state.message, onRetry = { matchState = MatchState.Idle })
+            } else {
+                TrialLimitedContent(onUpgrade = { onOpenSubscription?.invoke() })
             }
         }
 
         Spacer(Modifier.weight(1f))
         HelplinesFooter()
+    }
+
+    // Trial limit modal
+    if (showTrialModal) {
+        AlertDialog(
+            title = { Text("Free trial complete") },
+            text = { Text("You've used your free trial chat. Upgrade to VibeCheck Plus for unlimited matches.") },
+            onDismissRequest = { showTrialModal = false },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    showTrialModal = false
+                    onOpenSubscription?.invoke()
+                }) { Text("Upgrade") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showTrialModal = false }) { Text("Not now") }
+            },
+        )
     }
 }
 
@@ -260,6 +296,30 @@ private fun ErrorContent(message: String, onRetry: () -> Unit) {
         Text(message, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
         Spacer(Modifier.height(20.dp))
         Button(onClick = onRetry, modifier = Modifier.fillMaxWidth().height(48.dp)) { Text("Retry") }
+    }
+}
+
+@Composable
+private fun TrialLimitedContent(onUpgrade: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text("🔐", fontSize = 48.sp)
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "Free trial used",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Medium,
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "You've unlocked one free chat. Upgrade to VibeCheck Plus for unlimited matches.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(20.dp))
+        Button(onClick = onUpgrade, modifier = Modifier.fillMaxWidth().height(48.dp)) {
+            Text("Upgrade to Plus")
+        }
     }
 }
 

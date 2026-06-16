@@ -50,16 +50,18 @@ class DefaultAppContainer(app: Application) : AppContainer {
 
     override val microActionEngine = FakeMicroActionEngine()
 
+    // Real Play Billing backs production (billing module).
+    override val billingRepository = PlayBillingRepository(app, appScope)
+
     // Anonymous chat: Firestore + callable Cloud Functions, profanity-filtered.
     override val chatRepository = RealChatRepository(
         auth = FirebaseProvider.auth,
         firestore = FirebaseProvider.firestore,
         functions = FirebaseProvider.functions,
         moodRepository = moodRepository,
+        prefs = prefs,
+        billingRepository = billingRepository,
     )
-
-    // Real Play Billing backs production (billing module).
-    override val billingRepository = PlayBillingRepository(app, appScope)
 
     // Insights module owner swaps this for a real implementation on their branch.
     override val insightsRepository = FakeInsightsRepository(moodRepository, billingRepository)

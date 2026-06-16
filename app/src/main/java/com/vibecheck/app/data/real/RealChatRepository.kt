@@ -10,13 +10,16 @@ import com.vibecheck.app.core.model.ChatMessage
 import com.vibecheck.app.core.model.ChatSession
 import com.vibecheck.app.core.model.MatchState
 import com.vibecheck.app.core.model.Mood
+import com.vibecheck.app.data.BillingRepository
 import com.vibecheck.app.data.ChatRepository
 import com.vibecheck.app.data.MoodRepository
+import com.vibecheck.app.data.local.ProfilePreferences
 import com.vibecheck.app.domain.chat.ProfanityFilter
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -32,6 +35,8 @@ class RealChatRepository(
     private val firestore: FirebaseFirestore,
     private val functions: FirebaseFunctions,
     private val moodRepository: MoodRepository,
+    private val prefs: ProfilePreferences,
+    private val billingRepository: BillingRepository,
 ) : ChatRepository {
 
     private val uid: String? get() = auth.currentUser?.uid
@@ -156,6 +161,15 @@ class RealChatRepository(
             functions.getHttpsCallable("leaveSession")
                 .call(mapOf("sessionId" to sessionId)).await()
         }
+    }
+
+    override fun canAccessMatch(): Flow<Boolean> =
+        combine(prefs.trialChatUsed, billingRepository.isSubscribed) { trialUsed, isPremium ->
+            !trialUsed || isPremium
+        }
+
+    override suspend fun markTrialUsed() {
+        prefs.markTrialChatUsed()
     }
 
     private fun toSession(snap: DocumentSnapshot, me: String?): ChatSession? {
