@@ -6,8 +6,8 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -27,26 +27,26 @@ import com.vibecheck.app.ui.splash.SplashScreen
 import com.vibecheck.app.ui.subscription.SubscriptionScreen
 
 private fun AnimatedContentTransitionScope<*>.smoothEnter(): EnterTransition =
-    slideInHorizontally(
-        initialOffsetX = { 1000 },
+    scaleIn(
+        initialScale = 0.85f,
         animationSpec = tween(durationMillis = 400),
     ) + fadeIn(animationSpec = tween(durationMillis = 400))
 
 private fun AnimatedContentTransitionScope<*>.smoothExit(): ExitTransition =
-    slideOutHorizontally(
-        targetOffsetX = { -1000 },
+    scaleOut(
+        targetScale = 0.85f,
         animationSpec = tween(durationMillis = 400),
     ) + fadeOut(animationSpec = tween(durationMillis = 400))
 
 private fun AnimatedContentTransitionScope<*>.smoothPopEnter(): EnterTransition =
-    slideInHorizontally(
-        initialOffsetX = { -1000 },
+    scaleIn(
+        initialScale = 0.85f,
         animationSpec = tween(durationMillis = 400),
     ) + fadeIn(animationSpec = tween(durationMillis = 400))
 
 private fun AnimatedContentTransitionScope<*>.smoothPopExit(): ExitTransition =
-    slideOutHorizontally(
-        targetOffsetX = { 1000 },
+    scaleOut(
+        targetScale = 0.85f,
         animationSpec = tween(durationMillis = 400),
     ) + fadeOut(animationSpec = tween(durationMillis = 400))
 
