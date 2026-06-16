@@ -276,7 +276,7 @@ class FakeBillingRepository : BillingRepository {
     override val isSubscribed: Flow<Boolean> = subscribed
     // Dual currency per the SOW (US + UK). The real PlayBillingRepository reads
     // the localised price from Play; this is the demo stand-in.
-    override val monthlyPriceFormatted: Flow<String?> = MutableStateFlow("$2.99 / £2.49")
+    override val monthlyPriceFormatted: Flow<String?> = MutableStateFlow("$29.00 / £29.00")
 
     override suspend fun launchPurchase(activity: Activity): Result<Unit> {
         delay(1200) // simulate the Play purchase sheet (demo — no real charge)

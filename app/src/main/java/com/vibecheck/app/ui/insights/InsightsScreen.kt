@@ -283,7 +283,7 @@ private fun PremiumSection(
                         textAlign = TextAlign.Center,
                     )
                     Spacer(Modifier.height(10.dp))
-                    Button(onClick = onUpgrade) { Text("Upgrade — \$2.99 / £2.49") }
+                    Button(onClick = onUpgrade) { Text("Upgrade — \$29.00 / £29.00") }
                 }
             }
         }

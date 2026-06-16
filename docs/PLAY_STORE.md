@@ -44,7 +44,7 @@ anonymous even to us. Everything is deleted after 90 days of inactivity. Built
 for the US and UK with privacy regulations in mind.
 
 VibeCheck Plus
-Unlock deeper insights, 30-day history, and CSV export for $2.99 / £2.49 a
+Unlock deeper insights, 30-day history, and CSV export for $29.00 / £29.00 a
 month. Cancel anytime.
 
 VibeCheck is a wellbeing tool, not a medical device, and isn’t a substitute for

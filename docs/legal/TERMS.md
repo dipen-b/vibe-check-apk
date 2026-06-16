@@ -57,7 +57,7 @@ or statements of other users.
 ## 6. Subscriptions (VibeCheck Plus)
 
 - VibeCheck Plus is an auto-renewing subscription sold through **Google Play
-  Billing** at `[$2.99 USD / £2.49 GBP]` per month (or the price shown in your
+  Billing** at `[$29.00 USD / £29.00 GBP]` per month (or the price shown in your
   region at purchase).
 - Payment is charged to your Google Play account. The subscription renews
   automatically unless cancelled at least 24 hours before the period ends.

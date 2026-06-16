@@ -25,7 +25,7 @@ once it's up.
 ## 2. Google Play Console 🔑
 - [ ] Play developer account ($25 one-time)
 - [ ] Create the app entry (package `com.vibecheck.app`)
-- [ ] Create subscription product `vibecheck_plus_monthly` with base plans at **$2.99 / £2.49**
+- [ ] Create subscription product `vibecheck_plus_monthly` with base plans at **$29.00 / £29.00**
 - [ ] Store listing: title, short/full description, **screenshots**, feature graphic, icon — *draft copy: [PLAY_STORE.md](PLAY_STORE.md)*
 - [ ] Content rating questionnaire
 - [ ] **Data Safety** form (declare: anonymous, no PII, no precise location)
