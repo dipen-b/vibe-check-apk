@@ -136,7 +136,7 @@ fun SubscriptionScreen(container: AppContainer, onBack: () -> Unit) {
         } else {
             // Price
             Text(
-                price ?: "$2.99 / £2.49",
+                price ?: "$29.00 / £29.00",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = Violet,

@@ -208,7 +208,7 @@ fun SettingsScreen(container: AppContainer, onOpenSubscription: () -> Unit) {
                     )
                     Spacer(Modifier.height(8.dp))
                     Button(onClick = onOpenSubscription, modifier = Modifier.fillMaxWidth()) {
-                        Text("Upgrade — \$2.99 / £2.49 / mo")
+                        Text("Upgrade — \$29.00 / £29.00 / mo")
                     }
                     TextButton(
                         onClick = {

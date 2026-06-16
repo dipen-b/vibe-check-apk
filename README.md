@@ -24,7 +24,7 @@ location.** Built for the UK Online Safety Act + US COPPA.
 | **Heatmap** | Aggregated, anonymous city-level mood — Local / 🇺🇸 US / 🇬🇧 UK / Global, list + map |
 | **Anonymous match + chat** | Opt-in, mood-matched, 5-min ephemeral chat; profanity filter + report; auto-deleted |
 | **Insights** | Weekly trend + best/toughest day; CSV export (premium) |
-| **VibeCheck Plus** | $2.99 / £2.49 monthly subscription via Google Play Billing 7 |
+| **VibeCheck Plus** | $29.00 / £29.00 monthly subscription via Google Play Billing 7 |
 
 UK/US localisation throughout (e.g. "Knackered"/"Buzzing", dual currency, both
 crisis helplines — 988 and 116 123).
