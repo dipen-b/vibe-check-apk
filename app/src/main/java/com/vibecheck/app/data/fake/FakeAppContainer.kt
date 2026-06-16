@@ -274,15 +274,20 @@ class FakeChatRepository(private val scope: CoroutineScope) : ChatRepository {
 class FakeBillingRepository : BillingRepository {
     private val subscribed = MutableStateFlow(false)
     override val isSubscribed: Flow<Boolean> = subscribed
-    override val monthlyPriceFormatted: Flow<String?> = MutableStateFlow("$2.99")
+    // Dual currency per the SOW (US + UK). The real PlayBillingRepository reads
+    // the localised price from Play; this is the demo stand-in.
+    override val monthlyPriceFormatted: Flow<String?> = MutableStateFlow("$2.99 / £2.49")
 
     override suspend fun launchPurchase(activity: Activity): Result<Unit> {
-        delay(800) // simulate the Play purchase sheet
+        delay(1200) // simulate the Play purchase sheet (demo — no real charge)
         subscribed.value = true
         return Result.success(Unit)
     }
 
-    override suspend fun refresh() {}
+    /** Demo affordance: lets QA reset entitlement to re-test the paywall. */
+    override suspend fun refresh() {
+        // no-op in demo; real impl re-queries Play + server entitlement
+    }
 }
 
 class FakeInsightsRepository(
