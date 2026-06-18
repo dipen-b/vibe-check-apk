@@ -141,3 +141,8 @@ exports.closeExpiredSessions = match.closeExpiredSessions;
 // ---- Server-trusted entitlement (billing) ---------------------------
 const billing = require("./billing");
 exports.validatePurchase = billing.validatePurchase;
+
+// ---- Groq AI conversation enhancement (groq) -------------------------
+const groq = require("./groq");
+exports.generateOpeningSuggestions = groq.generateOpeningSuggestions;
+exports.generateReplySuggestions = groq.generateReplySuggestions;
