@@ -263,6 +263,20 @@ class FakeChatRepository(private val scope: CoroutineScope, private val billingR
         trialUsed.value = true
     }
 
+    override suspend fun getOpeningSuggestions(peerMood: Mood, userMood: Mood): Result<List<String>> =
+        Result.success(listOf(
+            "hey, how's your day going?",
+            "i'm feeling similar vibes — mind chatting?",
+            "we matched on mood! want to talk?",
+        ))
+
+    override suspend fun getReplySuggestions(sessionId: String, lastMessage: String): Result<List<String>> =
+        Result.success(listOf(
+            "totally get that",
+            "yeah, me too",
+            "that makes sense",
+        ))
+
     private fun appendMessage(sessionId: String, fromMe: Boolean, text: String) {
         val message = ChatMessage(
             id = UUID.randomUUID().toString(),

@@ -172,6 +172,34 @@ class RealChatRepository(
         prefs.markTrialChatUsed()
     }
 
+    override suspend fun getOpeningSuggestions(peerMood: Mood, userMood: Mood): Result<List<String>> = runCatching {
+        val result = functions.getHttpsCallable("generateOpeningSuggestions").call(
+            mapOf(
+                "peerMood" to peerMood.name,
+                "userMood" to userMood.name,
+            )
+        ).await()
+
+        @Suppress("UNCHECKED_CAST")
+        val data = result.getData() as? Map<String, Any?>
+        val suggestions = data?.get("suggestions") as? List<String> ?: emptyList()
+        suggestions
+    }
+
+    override suspend fun getReplySuggestions(sessionId: String, lastMessage: String): Result<List<String>> = runCatching {
+        val result = functions.getHttpsCallable("generateReplySuggestions").call(
+            mapOf(
+                "sessionId" to sessionId,
+                "lastMessage" to lastMessage,
+            )
+        ).await()
+
+        @Suppress("UNCHECKED_CAST")
+        val data = result.getData() as? Map<String, Any?>
+        val suggestions = data?.get("suggestions") as? List<String> ?: emptyList()
+        suggestions
+    }
+
     private fun toSession(snap: DocumentSnapshot, me: String?): ChatSession? {
         if (!snap.exists()) return null
         @Suppress("UNCHECKED_CAST")

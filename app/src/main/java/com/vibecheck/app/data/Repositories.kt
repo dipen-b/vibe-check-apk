@@ -68,6 +68,12 @@ interface ChatRepository {
 
     /** Mark the free trial chat as used. */
     suspend fun markTrialUsed()
+
+    /** Get AI-suggested opening messages for a matched user. */
+    suspend fun getOpeningSuggestions(peerMood: Mood, userMood: Mood): Result<List<String>>
+
+    /** Get AI-suggested replies based on chat context. */
+    suspend fun getReplySuggestions(sessionId: String, lastMessage: String): Result<List<String>>
 }
 
 interface BillingRepository {

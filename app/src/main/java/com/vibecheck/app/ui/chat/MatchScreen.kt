@@ -9,6 +9,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +37,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -45,12 +47,14 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material3.AlertDialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vibecheck.app.core.model.MatchState
+import com.vibecheck.app.core.model.Mood
 import com.vibecheck.app.core.model.ProfileState
 import com.vibecheck.app.data.AppContainer
 import com.vibecheck.app.ui.components.pressBounce
 import com.vibecheck.app.ui.theme.Violet
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @Composable
@@ -69,6 +73,8 @@ fun MatchScreen(container: AppContainer, onChatStarted: (String) -> Unit, onOpen
     var matchState by remember { mutableStateOf<MatchState>(MatchState.Idle) }
     var chatOptIn by remember(profile) { mutableStateOf(profile?.chatOptIn ?: false) }
     var showTrialModal by remember { mutableStateOf(false) }
+    var openingSuggestions by remember { mutableStateOf<List<String>>(emptyList()) }
+    var selectedOpening by remember { mutableStateOf("") }
 
     LaunchedEffect(chatOptIn, profile) {
         if (profile != null && chatOptIn != profile.chatOptIn) {
@@ -80,6 +86,34 @@ fun MatchScreen(container: AppContainer, onChatStarted: (String) -> Unit, onOpen
     LaunchedEffect(matchState) {
         if (matchState is MatchState.Matched && !isSubscribed && canAccessMatch) {
             container.chatRepository.markTrialUsed()
+        }
+    }
+
+    // Load opening suggestions when a match is found
+    LaunchedEffect(matchState) {
+        if (matchState is MatchState.Matched) {
+            scope.launch {
+                try {
+                    val sessionId = (matchState as MatchState.Matched).sessionId
+                    val session = container.chatRepository.sessionState(sessionId).first()
+                    val userMood = container.moodRepository.todayCheckIn.first()?.mood ?: Mood.NEUTRAL
+
+                    if (session != null) {
+                        val result = container.chatRepository.getOpeningSuggestions(
+                            peerMood = session.peerMood ?: Mood.NEUTRAL,
+                            userMood = userMood,
+                        )
+                        result.getOrNull()?.let { suggestions ->
+                            openingSuggestions = suggestions
+                            if (suggestions.isNotEmpty()) {
+                                selectedOpening = suggestions[0]
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    // Suggestions failed, continue without them
+                }
+            }
         }
     }
 
@@ -156,7 +190,16 @@ fun MatchScreen(container: AppContainer, onChatStarted: (String) -> Unit, onOpen
                         },
                     )
                     is MatchState.Matched -> {
-                        LaunchedEffect(state.sessionId) { onChatStarted(state.sessionId) }
+                        if (openingSuggestions.isNotEmpty()) {
+                            MatchedWithSuggestionsContent(
+                                suggestions = openingSuggestions,
+                                selectedSuggestion = selectedOpening,
+                                onSuggestionSelected = { selectedOpening = it },
+                                onStartChat = { onChatStarted(state.sessionId) }
+                            )
+                        } else {
+                            LaunchedEffect(state.sessionId) { onChatStarted(state.sessionId) }
+                        }
                     }
                     is MatchState.TimedOut -> TimedOutContent(onRetry = { matchState = MatchState.Idle })
                     is MatchState.Failed -> ErrorContent(state.message, onRetry = { matchState = MatchState.Idle })
@@ -296,6 +339,76 @@ private fun ErrorContent(message: String, onRetry: () -> Unit) {
         Text(message, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
         Spacer(Modifier.height(20.dp))
         Button(onClick = onRetry, modifier = Modifier.fillMaxWidth().height(48.dp)) { Text("Retry") }
+    }
+}
+
+@Composable
+private fun MatchedWithSuggestionsContent(
+    suggestions: List<String>,
+    selectedSuggestion: String,
+    onSuggestionSelected: (String) -> Unit,
+    onStartChat: () -> Unit,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text("💬", fontSize = 48.sp)
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "You matched!",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Medium,
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "Start the conversation with a great opening.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(20.dp))
+
+        // Suggested opening messages
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            suggestions.forEach { suggestion ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSuggestionSelected(suggestion) },
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (selectedSuggestion == suggestion)
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                        else MaterialTheme.colorScheme.surface
+                    ),
+                ) {
+                    Text(
+                        suggestion,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(12.dp),
+                        fontWeight = if (selectedSuggestion == suggestion) FontWeight.Bold else FontWeight.Normal,
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(20.dp))
+        Button(
+            onClick = onStartChat,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+        ) {
+            Text("Start chat")
+        }
     }
 }
 
