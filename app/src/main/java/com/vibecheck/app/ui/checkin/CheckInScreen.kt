@@ -327,7 +327,10 @@ private fun AlreadyCheckedIn(checkIn: MoodCheckIn, history: List<MoodCheckIn>) {
         Spacer(Modifier.weight(1f))
         OutlinedButton(
             onClick = {
-                val playStoreUrl = "https://play.google.com/store/apps/details?id=${context.packageName}"
+                // Pinned to the published release applicationId (not context.packageName)
+                // so the link always redirects to the live Play Store listing, even from
+                // a debug/suffixed build. Resolves once the app is published.
+                val playStoreUrl = "https://play.google.com/store/apps/details?id=com.vibecheck.app"
                 val shareText = "${checkIn.mood.emoji} Feeling ${checkIn.mood.localisedLabel.lowercase()} today" +
                     checkIn.note?.let { " — \"$it\"" }.orEmpty() +
                     " 💜\n\nTrack your daily vibe with VibeCheck:\n$playStoreUrl\n\n#VibeCheck"
