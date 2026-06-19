@@ -1,9 +1,20 @@
 package com.vibecheck.app.ui.subscription
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,6 +32,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -31,11 +43,13 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,6 +60,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -55,6 +70,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vibecheck.app.data.AppContainer
 import com.vibecheck.app.ui.components.pressBounce
 import com.vibecheck.app.ui.theme.Violet
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private val benefits = listOf(
@@ -538,41 +554,265 @@ private fun BenefitRow(benefit: String) {
     }
 }
 
+private val unlockedFeatures = listOf(
+    "📅" to "30-day mood history",
+    "📊" to "Pattern insights & trends",
+    "🎯" to "Best & worst day analytics",
+    "📥" to "Export your data as CSV",
+    "⭐" to "Priority support",
+)
+
 @Composable
 private fun SubscribedView(onBack: () -> Unit) {
+    // Orchestrate entrance — check bounces in, then text, then features one by one
+    val checkScale = remember { Animatable(0f) }
+    var headlineVisible by remember { mutableStateOf(false) }
+    var thankYouVisible by remember { mutableStateOf(false) }
+    val featureVisible = remember { List(unlockedFeatures.size) { mutableStateOf(false) } }
+    var buttonVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(100)
+        checkScale.animateTo(
+            1f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMedium,
+            ),
+        )
+        delay(200)
+        thankYouVisible = true
+        delay(150)
+        headlineVisible = true
+        unlockedFeatures.forEachIndexed { i, _ ->
+            delay(120)
+            featureVisible[i].value = true
+        }
+        delay(200)
+        buttonVisible = true
+    }
+
+    // Infinite pulsing glow behind the check icon
+    val infinite = rememberInfiniteTransition(label = "glow")
+    val glowScale by infinite.animateFloat(
+        initialValue = 0.85f,
+        targetValue = 1.15f,
+        animationSpec = infiniteRepeatable(
+            tween(1400, easing = LinearEasing),
+            RepeatMode.Reverse,
+        ),
+        label = "glowScale",
+    )
+    val glowAlpha by infinite.animateFloat(
+        initialValue = 0.15f,
+        targetValue = 0.35f,
+        animationSpec = infiniteRepeatable(
+            tween(1400, easing = LinearEasing),
+            RepeatMode.Reverse,
+        ),
+        label = "glowAlpha",
+    )
+
     Column(
         Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
             .navigationBarsPadding()
-            .padding(24.dp),
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
     ) {
-        Text("🎉", fontSize = 80.sp)
-        Spacer(Modifier.height(24.dp))
-        Text(
-            "You're all set!",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-        )
-        Spacer(Modifier.height(12.dp))
-        Text(
-            "Welcome to VibeCheck Plus. Unlock the full power of your emotional insights.",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(40.dp))
-        Button(
-            onClick = onBack,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Violet),
+        Spacer(Modifier.height(16.dp))
+
+        // Animated check icon with pulsing glow rings
+        Box(
+            Modifier.size(160.dp),
+            contentAlignment = Alignment.Center,
         ) {
-            Text("Explore Plus", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            // Outer glow ring
+            Box(
+                Modifier
+                    .size(160.dp)
+                    .scale(glowScale)
+                    .background(Violet.copy(alpha = glowAlpha * 0.5f), CircleShape),
+            )
+            // Mid glow ring
+            Box(
+                Modifier
+                    .size(120.dp)
+                    .scale(glowScale * 0.95f)
+                    .background(Violet.copy(alpha = glowAlpha * 0.8f), CircleShape),
+            )
+            // Main circle with check
+            Box(
+                Modifier
+                    .size(88.dp)
+                    .scale(checkScale.value)
+                    .shadow(24.dp, CircleShape)
+                    .background(Violet, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Filled.CheckCircle,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(52.dp),
+                )
+            }
         }
+
+        Spacer(Modifier.height(28.dp))
+
+        // Thank you line
+        AnimatedVisibility(
+            visible = thankYouVisible,
+            enter = fadeIn(tween(400)) + slideInVertically { it / 2 },
+        ) {
+            Text(
+                "Thank you! 💜",
+                style = MaterialTheme.typography.titleMedium,
+                color = Violet,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.5.sp,
+            )
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        // Main headline
+        AnimatedVisibility(
+            visible = headlineVisible,
+            enter = fadeIn(tween(400)) + slideInVertically { it / 2 },
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    "Welcome to\nVibeCheck Plus",
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    textAlign = TextAlign.Center,
+                    fontSize = 30.sp,
+                )
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "You've unlocked the full power of your emotional insights.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+
+        Spacer(Modifier.height(36.dp))
+
+        // Unlocked features — staggered slide-in
+        AnimatedVisibility(
+            visible = featureVisible.any { it.value },
+            enter = fadeIn(),
+        ) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .background(
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        RoundedCornerShape(20.dp),
+                    )
+                    .padding(vertical = 8.dp),
+            ) {
+                Text(
+                    "YOU'VE UNLOCKED",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Violet,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                unlockedFeatures.forEachIndexed { i, (emoji, label) ->
+                    AnimatedVisibility(
+                        visible = featureVisible[i].value,
+                        enter = slideInHorizontally(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMedium,
+                            ),
+                        ) { -it / 2 } + fadeIn(),
+                    ) {
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        ) {
+                            Box(
+                                Modifier
+                                    .size(40.dp)
+                                    .background(Violet.copy(alpha = 0.12f), CircleShape),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(emoji, fontSize = 18.sp)
+                            }
+                            Text(
+                                label,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Icon(
+                                Icons.Filled.CheckCircle,
+                                contentDescription = null,
+                                tint = Violet,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                        if (i < unlockedFeatures.lastIndex) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 20.dp),
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(36.dp))
+
+        // CTA button
+        AnimatedVisibility(
+            visible = buttonVisible,
+            enter = fadeIn(tween(500)) + slideInVertically { it / 2 },
+        ) {
+            Column(
+                Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Button(
+                    onClick = onBack,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp)
+                        .pressBounce(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Violet),
+                ) {
+                    Text(
+                        "Start exploring",
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                Text(
+                    "Your subscription is active. Cancel anytime in Google Play.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
     }
 }
