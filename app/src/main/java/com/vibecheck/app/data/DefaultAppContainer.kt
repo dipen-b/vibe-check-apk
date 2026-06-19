@@ -8,9 +8,13 @@ import com.vibecheck.app.data.firebase.FirebaseProvider
 import com.vibecheck.app.data.local.ProfilePreferences
 import com.vibecheck.app.data.local.VibeCheckDatabase
 import com.vibecheck.app.data.real.RealChatRepository
+import com.vibecheck.app.data.real.RealFriendshipRepository
 import com.vibecheck.app.data.real.RealHeatmapRepository
 import com.vibecheck.app.data.real.RealMoodRepository
 import com.vibecheck.app.data.real.RealProfileRepository
+import com.vibecheck.app.data.real.RealResonanceRepository
+import com.vibecheck.app.data.real.RealQuestRepository
+import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -41,6 +45,18 @@ class DefaultAppContainer(app: Application) : AppContainer {
         firestore = FirebaseProvider.firestore,
     )
 
+    override val resonanceRepository = RealResonanceRepository(
+        firestore = FirebaseProvider.firestore,
+        auth = FirebaseProvider.auth,
+        storage = FirebaseStorage.getInstance(),
+        context = app,
+    )
+
+    override val questRepository = RealQuestRepository(
+        firestore = FirebaseProvider.firestore,
+        auth = FirebaseProvider.auth,
+    )
+
     override val moodRepository = RealMoodRepository(
         db = db,
         heatmapRepository = heatmapRepository,
@@ -65,4 +81,11 @@ class DefaultAppContainer(app: Application) : AppContainer {
 
     // Insights module owner swaps this for a real implementation on their branch.
     override val insightsRepository = FakeInsightsRepository(moodRepository, billingRepository)
+
+    override val friendshipRepository = RealFriendshipRepository(
+        context = app,
+        auth = FirebaseProvider.auth,
+        firestore = FirebaseProvider.firestore,
+        storage = FirebaseStorage.getInstance(),
+    )
 }

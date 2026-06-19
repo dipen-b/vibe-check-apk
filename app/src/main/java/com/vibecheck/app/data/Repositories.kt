@@ -10,8 +10,13 @@ import com.vibecheck.app.core.model.Mood
 import com.vibecheck.app.core.model.MoodCheckIn
 import com.vibecheck.app.core.model.PreviousMatch
 import com.vibecheck.app.core.model.ProfileState
+import com.vibecheck.app.core.model.Quest
+import com.vibecheck.app.core.model.QuestType
+import com.vibecheck.app.core.model.DailyQuestState
+import com.vibecheck.app.core.model.VibeLedger
 import com.vibecheck.app.core.model.RegionInfo
 import com.vibecheck.app.core.model.RegionMoodAggregate
+import com.vibecheck.app.core.model.ResonancePost
 import com.vibecheck.app.core.model.UserProfile
 import com.vibecheck.app.core.model.WeeklyInsights
 import kotlinx.coroutines.flow.Flow
@@ -110,6 +115,44 @@ interface InsightsRepository {
 
     /** Premium: full history as CSV text for the share sheet. */
     suspend fun exportHistoryCsv(): Result<String>
+}
+
+enum class ResonanceScope { MY_CITY, GLOBAL }
+
+interface QuestRepository {
+    /** Get today's daily quests for the user. */
+    suspend fun getTodayQuests(): Result<DailyQuestState>
+
+    /** Mark a quest as completed and award gems. */
+    suspend fun completeQuest(questId: String): Result<Int> // Returns gems earned
+
+    /** Use a Revive Orb to retry a quest (consumable IAP). */
+    suspend fun useReviveOrb(questId: String): Result<Unit>
+
+    /** Get user's gem balance and streak. */
+    suspend fun getVibeLedger(): Result<VibeLedger>
+
+    /** Get global or friend leaderboard. */
+    suspend fun getLeaderboard(scope: String = "global", limit: Int = 50): Result<List<LeaderboardEntry>>
+}
+
+data class LeaderboardEntry(
+    val rank: Int,
+    val username: String,
+    val currentStreak: Long,
+    val totalGems: Int,
+    val isFriend: Boolean = false,
+)
+
+interface ResonanceRepository {
+    /** Fetch posts from a given region/scope (My City = user's region, Global = all). */
+    suspend fun feed(regionId: String, scope: ResonanceScope, limit: Int = 50): Result<List<ResonancePost>>
+
+    /** Submit a new anonymous post (1-5 words, max 100 chars) with optional image. [imageUri] is auto-resized to 500x500. */
+    suspend fun submitPost(mood: Mood, text: String, regionId: String, imageUri: String? = null): Result<ResonancePost>
+
+    /** Increment the resonate count on a post. */
+    suspend fun resonate(postId: String): Result<Unit>
 }
 
 /** Rule-based engine choosing a ~2-minute activity for a mood (SOW "AI micro-actions"). */

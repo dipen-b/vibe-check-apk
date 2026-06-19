@@ -13,7 +13,6 @@ val localProperties = Properties().apply {
     val file = rootProject.file("local.properties")
     if (file.exists()) file.inputStream().use { load(it) }
 }
-val mapsApiKey: String = localProperties.getProperty("MAPS_API_KEY") ?: "PLACEHOLDER_MAPS_API_KEY"
 
 // Release signing — read from local.properties (git-ignored) or the environment
 // (CI). When no keystore is configured, the release build falls back to debug
@@ -36,7 +35,6 @@ android {
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
     signingConfigs {
@@ -122,12 +120,12 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.functions)
+    implementation(libs.firebase.storage)
     implementation(libs.firebase.crashlytics)
 
-    implementation(libs.play.services.maps)
     implementation(libs.play.services.location)
-    implementation(libs.maps.compose)
-    implementation(libs.android.maps.utils)
+
+    implementation(libs.coil.compose)
 
     implementation(libs.billing.ktx)
 

@@ -16,10 +16,6 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.VibeCheck">
 
-        <meta-data
-            android:name="com.google.android.geo.API_KEY"
-            android:value="${MAPS_API_KEY}" />
-
         <!-- Advertising ID is never used; declare zero so Play Data Safety matches. -->
         <meta-data
             android:name="google_analytics_adid_collection_enabled"

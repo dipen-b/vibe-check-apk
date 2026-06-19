@@ -9,8 +9,11 @@ interface AppContainer {
     val profileRepository: ProfileRepository
     val moodRepository: MoodRepository
     val heatmapRepository: HeatmapRepository
+    val resonanceRepository: ResonanceRepository
+    val questRepository: QuestRepository
     val chatRepository: ChatRepository
     val billingRepository: BillingRepository
     val insightsRepository: InsightsRepository
     val microActionEngine: MicroActionEngine
+    val friendshipRepository: FriendshipRepository
 }

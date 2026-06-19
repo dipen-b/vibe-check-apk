@@ -19,6 +19,7 @@ import com.vibecheck.app.core.model.RegionInfo
 import com.vibecheck.app.core.model.RegionMoodAggregate
 import com.vibecheck.app.core.model.UserProfile
 import com.vibecheck.app.core.model.WeeklyInsights
+import com.vibecheck.app.core.model.ResonancePost
 import com.vibecheck.app.data.AppContainer
 import com.vibecheck.app.data.BillingRepository
 import com.vibecheck.app.data.ChatRepository
@@ -27,6 +28,9 @@ import com.vibecheck.app.data.InsightsRepository
 import com.vibecheck.app.data.MicroActionEngine
 import com.vibecheck.app.data.MoodRepository
 import com.vibecheck.app.data.ProfileRepository
+import com.vibecheck.app.data.ResonanceRepository
+import com.vibecheck.app.data.ResonanceScope
+import com.vibecheck.app.data.QuestRepository
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
@@ -59,10 +63,13 @@ class FakeAppContainer(@Suppress("unused") private val app: Application) : AppCo
     override val profileRepository = FakeProfileRepository()
     override val moodRepository = FakeMoodRepository()
     override val heatmapRepository = FakeHeatmapRepository()
+    override val resonanceRepository = FakeResonanceRepository()
+    override val questRepository = FakeQuestRepository()
     override val billingRepository = FakeBillingRepository()
     override val chatRepository = FakeChatRepository(scope, billingRepository)
     override val insightsRepository = FakeInsightsRepository(moodRepository, billingRepository)
     override val microActionEngine = FakeMicroActionEngine()
+    override val friendshipRepository = FakeFriendshipRepository()
 }
 
 class FakeProfileRepository : ProfileRepository {
@@ -451,4 +458,99 @@ class FakeMicroActionEngine : MicroActionEngine {
         catalogue.getValue(mood).first()
 
     override fun alternativesFor(mood: Mood): List<MicroAction> = catalogue.getValue(mood)
+}
+
+class FakeResonanceRepository : ResonanceRepository {
+    private val posts = mutableListOf<ResonancePost>()
+
+    init {
+        // Seed with a few demo posts
+        val now = System.currentTimeMillis()
+        val daySecs = 24L * 60 * 60 * 1000
+        posts.addAll(
+            listOf(
+                ResonancePost(
+                    id = "demo-1",
+                    mood = Mood.HAPPY,
+                    text = "Finally got the promotion!",
+                    regionId = "us-nyc",
+                    createdAtMillis = now - 5 * 60_000,
+                    resonateCount = 12,
+                ),
+                ResonancePost(
+                    id = "demo-2",
+                    mood = Mood.SAD,
+                    text = "Missing my family today",
+                    regionId = "us-nyc",
+                    createdAtMillis = now - 20 * 60_000,
+                    resonateCount = 47,
+                ),
+                ResonancePost(
+                    id = "demo-3",
+                    mood = Mood.NEUTRAL,
+                    text = "Another Monday morning",
+                    regionId = "gb-lon",
+                    createdAtMillis = now - 1 * 60_000,
+                    resonateCount = 3,
+                ),
+                ResonancePost(
+                    id = "demo-4",
+                    mood = Mood.EXCITED,
+                    text = "Can't wait for the weekend!",
+                    regionId = "us-nyc",
+                    createdAtMillis = now - 45 * 60_000,
+                    resonateCount = 8,
+                ),
+                ResonancePost(
+                    id = "demo-5",
+                    mood = Mood.TIRED,
+                    text = "Need more coffee",
+                    regionId = "gb-lon",
+                    createdAtMillis = now - 3_600_000,
+                    resonateCount = 23,
+                ),
+            )
+        )
+    }
+
+    override suspend fun feed(
+        regionId: String,
+        scope: ResonanceScope,
+        limit: Int,
+    ): Result<List<ResonancePost>> = runCatching {
+        val filtered = when (scope) {
+            ResonanceScope.MY_CITY -> posts.filter { it.regionId == regionId }
+            ResonanceScope.GLOBAL -> posts
+        }
+        filtered.sortedByDescending { it.createdAtMillis }.take(limit)
+    }
+
+    override suspend fun submitPost(
+        mood: Mood,
+        text: String,
+        regionId: String,
+        imageUri: String?,
+    ): Result<ResonancePost> = runCatching {
+        val cleaned = text.trim()
+        require(cleaned.isNotBlank()) { "Post cannot be empty." }
+        val post = ResonancePost(
+            id = UUID.randomUUID().toString(),
+            mood = mood,
+            text = cleaned,
+            regionId = regionId,
+            createdAtMillis = System.currentTimeMillis(),
+            resonateCount = 0,
+            imageUrl = imageUri, // In fake mode, just use the URI as-is
+        )
+        posts.add(0, post)
+        post
+    }
+
+    override suspend fun resonate(postId: String): Result<Unit> = runCatching {
+        val post = posts.find { it.id == postId }
+        if (post != null) {
+            val idx = posts.indexOf(post)
+            posts[idx] = post.copy(resonateCount = post.resonateCount + 1)
+        }
+    }
 }

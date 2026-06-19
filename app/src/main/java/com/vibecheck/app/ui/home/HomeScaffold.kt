@@ -23,10 +23,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Forum
-import androidx.compose.material.icons.outlined.Insights
-import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Mood
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Whatshot
+import androidx.compose.material.icons.outlined.EmojiEvents
+import androidx.compose.material.icons.outlined.PeopleAlt
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -51,15 +52,16 @@ import com.vibecheck.app.data.AppContainer
 import com.vibecheck.app.ui.chat.MatchScreen
 import com.vibecheck.app.ui.checkin.CheckInScreen
 import com.vibecheck.app.ui.components.ConfettiEffect
-import com.vibecheck.app.ui.heatmap.HeatmapScreen
-import com.vibecheck.app.ui.insights.InsightsScreen
+import com.vibecheck.app.ui.feed.ResonanceFeedScreen
+import com.vibecheck.app.ui.friendship.FriendshipScreen
+import com.vibecheck.app.ui.gauntlet.GauntletScreen
 import com.vibecheck.app.ui.settings.SettingsScreen
 
 enum class HomeTab(val label: String, val icon: ImageVector) {
     CHECK_IN("Check-in", Icons.Outlined.Mood),
-    HEATMAP("Heatmap", Icons.Outlined.Map),
-    MATCH("Match", Icons.Outlined.Forum),
-    INSIGHTS("Insights", Icons.Outlined.Insights),
+    FEED("Feed", Icons.Outlined.Whatshot),
+    FRIENDS("Friends", Icons.Outlined.PeopleAlt),
+    GAUNTLET("Gauntlet", Icons.Outlined.EmojiEvents),
     SETTINGS("Settings", Icons.Outlined.Settings),
 }
 
@@ -178,9 +180,9 @@ fun HomeScaffold(
             ) { tab ->
                 when (tab) {
                     HomeTab.CHECK_IN -> CheckInScreen(container, onCheckedIn)
-                    HomeTab.HEATMAP -> HeatmapScreen(container)
-                    HomeTab.MATCH -> MatchScreen(container, onChatStarted, onOpenSubscription)
-                    HomeTab.INSIGHTS -> InsightsScreen(container, onUpgrade = onOpenSubscription)
+                    HomeTab.FEED -> ResonanceFeedScreen(container, onOpenSubscription)
+                    HomeTab.FRIENDS -> FriendshipScreen(container)
+                    HomeTab.GAUNTLET -> GauntletScreen(container)
                     HomeTab.SETTINGS -> SettingsScreen(
                         container,
                         onOpenSubscription = onOpenSubscription,

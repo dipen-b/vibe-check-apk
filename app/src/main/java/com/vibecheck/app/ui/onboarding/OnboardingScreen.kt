@@ -64,8 +64,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.KeyboardOptions
 import com.vibecheck.app.core.AppConfig
 import com.vibecheck.app.core.model.AgeBracket
 import com.vibecheck.app.core.reminder.ReminderScheduler
@@ -74,15 +76,20 @@ import com.vibecheck.app.ui.components.pressBounce
 import com.vibecheck.app.ui.theme.Violet
 import kotlinx.coroutines.launch
 
-private enum class OnboardingStep { WELCOME, AGE, FINISH }
+private enum class OnboardingStep { WELCOME, PHONE_INPUT, OTP_VERIFICATION, PROFILE_CREATION, AGE, FINISH }
 
 @Composable
 fun OnboardingScreen(container: AppContainer, onComplete: () -> Unit) {
     var step by rememberSaveable { mutableStateOf(OnboardingStep.WELCOME) }
+    var phoneNumber by rememberSaveable { mutableStateOf("") }
+    var otp by rememberSaveable { mutableStateOf("") }
+    var firstName by rememberSaveable { mutableStateOf("") }
+    var lastName by rememberSaveable { mutableStateOf("") }
     var ageChoice by rememberSaveable { mutableStateOf<AgeBracket?>(null) }
     var username by rememberSaveable { mutableStateOf("") }
     var reminderOptIn by rememberSaveable { mutableStateOf(false) }
     var submitting by rememberSaveable { mutableStateOf(false) }
+    var userId by rememberSaveable { mutableStateOf("") }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -108,11 +115,92 @@ fun OnboardingScreen(container: AppContainer, onComplete: () -> Unit) {
                 modifier = Modifier.weight(1f),
             ) { current ->
                 when (current) {
-                    OnboardingStep.WELCOME -> WelcomeStep(onContinue = { step = OnboardingStep.AGE })
+                    OnboardingStep.WELCOME -> WelcomeStep(onContinue = { step = OnboardingStep.PHONE_INPUT })
+                    OnboardingStep.PHONE_INPUT -> PhoneInputStepOnboarding(
+                        phoneNumber = phoneNumber,
+                        onPhoneNumberChange = { phoneNumber = it },
+                        submitting = submitting,
+                        onBack = { step = OnboardingStep.WELCOME },
+                        onContinue = {
+                            if (phoneNumber.isBlank()) {
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar("Please enter a phone number")
+                                }
+                                return@PhoneInputStepOnboarding
+                            }
+                            submitting = true
+                            coroutineScope.launch {
+                                container.friendshipRepository.sendOTP(phoneNumber, "+1")
+                                    .onSuccess {
+                                        submitting = false
+                                        step = OnboardingStep.OTP_VERIFICATION
+                                    }
+                                    .onFailure {
+                                        snackbarHostState.showSnackbar(it.message ?: "Failed to send OTP")
+                                        submitting = false
+                                    }
+                            }
+                        }
+                    )
+                    OnboardingStep.OTP_VERIFICATION -> OTPVerificationStepOnboarding(
+                        otp = otp,
+                        onOtpChange = { otp = it },
+                        submitting = submitting,
+                        onBack = { step = OnboardingStep.PHONE_INPUT; otp = "" },
+                        onContinue = {
+                            if (otp.isBlank()) {
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar("Please enter OTP")
+                                }
+                                return@OTPVerificationStepOnboarding
+                            }
+                            submitting = true
+                            coroutineScope.launch {
+                                container.friendshipRepository.verifyOTP(phoneNumber, otp)
+                                    .onSuccess { uid ->
+                                        userId = uid
+                                        submitting = false
+                                        step = OnboardingStep.PROFILE_CREATION
+                                    }
+                                    .onFailure {
+                                        snackbarHostState.showSnackbar(it.message ?: "Invalid OTP")
+                                        submitting = false
+                                    }
+                            }
+                        }
+                    )
+                    OnboardingStep.PROFILE_CREATION -> ProfileCreationStepOnboarding(
+                        firstName = firstName,
+                        onFirstNameChange = { firstName = it },
+                        lastName = lastName,
+                        onLastNameChange = { lastName = it },
+                        submitting = submitting,
+                        onBack = { step = OnboardingStep.OTP_VERIFICATION },
+                        onContinue = {
+                            if (firstName.isBlank() || lastName.isBlank()) {
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar("Please fill in your name")
+                                }
+                                return@ProfileCreationStepOnboarding
+                            }
+                            submitting = true
+                            coroutineScope.launch {
+                                container.friendshipRepository.createUserProfile(userId, firstName, lastName)
+                                    .onSuccess {
+                                        submitting = false
+                                        step = OnboardingStep.AGE
+                                    }
+                                    .onFailure {
+                                        snackbarHostState.showSnackbar(it.message ?: "Failed to create profile")
+                                        submitting = false
+                                    }
+                            }
+                        }
+                    )
                     OnboardingStep.AGE -> AgeStep(
                         selected = ageChoice,
                         onSelect = { ageChoice = it },
-                        onBack = { step = OnboardingStep.WELCOME },
+                        onBack = { step = OnboardingStep.PROFILE_CREATION },
                         onContinue = { step = OnboardingStep.FINISH },
                     )
                     OnboardingStep.FINISH -> FinishStep(
@@ -567,6 +655,206 @@ private fun FinishStep(
             }
             TextButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
                 Text("Back", fontSize = 16.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PhoneInputStepOnboarding(
+    phoneNumber: String,
+    onPhoneNumberChange: (String) -> Unit,
+    submitting: Boolean,
+    onBack: () -> Unit,
+    onContinue: () -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Column {
+            Text(
+                "Verify your phone",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 28.sp,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "We'll send you an OTP to verify your number",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(28.dp))
+
+            OutlinedTextField(
+                value = phoneNumber,
+                onValueChange = { onPhoneNumberChange(it.take(15)) },
+                label = { Text("Phone Number") },
+                placeholder = { Text("9876543210") },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+            )
+        }
+
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            TextButton(onClick = onBack, modifier = Modifier.weight(1f), enabled = !submitting) {
+                Text("Back", fontSize = 16.sp)
+            }
+            Button(
+                onClick = onContinue,
+                enabled = phoneNumber.isNotBlank() && !submitting,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Violet),
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                if (submitting) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                } else {
+                    Text("Send OTP", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OTPVerificationStepOnboarding(
+    otp: String,
+    onOtpChange: (String) -> Unit,
+    submitting: Boolean,
+    onBack: () -> Unit,
+    onContinue: () -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Column {
+            Text(
+                "Enter OTP",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 28.sp,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Check your SMS for the 6-digit code",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(28.dp))
+
+            OutlinedTextField(
+                value = otp,
+                onValueChange = { onOtpChange(it.take(6)) },
+                label = { Text("OTP") },
+                placeholder = { Text("000000") },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            )
+        }
+
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            TextButton(onClick = onBack, modifier = Modifier.weight(1f), enabled = !submitting) {
+                Text("Back", fontSize = 16.sp)
+            }
+            Button(
+                onClick = onContinue,
+                enabled = otp.isNotBlank() && !submitting,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Violet),
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                if (submitting) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                } else {
+                    Text("Verify", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileCreationStepOnboarding(
+    firstName: String,
+    onFirstNameChange: (String) -> Unit,
+    lastName: String,
+    onLastNameChange: (String) -> Unit,
+    submitting: Boolean,
+    onBack: () -> Unit,
+    onContinue: () -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Column {
+            Text(
+                "Create your profile",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 28.sp,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Friends will find you by your name",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(28.dp))
+
+            OutlinedTextField(
+                value = firstName,
+                onValueChange = { onFirstNameChange(it.take(20)) },
+                label = { Text("First Name") },
+                placeholder = { Text("John") },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+            )
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = lastName,
+                onValueChange = { onLastNameChange(it.take(20)) },
+                label = { Text("Last Name") },
+                placeholder = { Text("Doe") },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+            )
+        }
+
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            TextButton(onClick = onBack, modifier = Modifier.weight(1f), enabled = !submitting) {
+                Text("Back", fontSize = 16.sp)
+            }
+            Button(
+                onClick = onContinue,
+                enabled = firstName.isNotBlank() && lastName.isNotBlank() && !submitting,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Violet),
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                if (submitting) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                } else {
+                    Text("Continue", fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
