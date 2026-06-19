@@ -15,12 +15,14 @@ import com.vibecheck.app.data.ChatRepository
 import com.vibecheck.app.data.MoodRepository
 import com.vibecheck.app.data.local.ProfilePreferences
 import com.vibecheck.app.domain.chat.ProfanityFilter
+import com.vibecheck.app.core.model.PreviousMatch
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
@@ -198,6 +200,26 @@ class RealChatRepository(
         val data = result.getData() as? Map<String, Any?>
         val suggestions = data?.get("suggestions") as? List<String> ?: emptyList()
         suggestions
+    }
+
+    override fun previousMatches(): Flow<List<PreviousMatch>> = flow {
+        // Future: fetch from Firestore collection("previousMatches") filtered by uid
+        emit(emptyList())
+    }
+
+    override suspend fun savePreviousMatch(match: PreviousMatch) {
+        // Future: save to Firestore collection("previousMatches").document(uid)
+        // For now, no-op
+    }
+
+    override suspend fun requestReMatch(previousMatchSessionId: String): Result<String> = runCatching {
+        val result = functions.getHttpsCallable("requestReMatch").call(
+            mapOf("previousSessionId" to previousMatchSessionId)
+        ).await()
+
+        @Suppress("UNCHECKED_CAST")
+        val data = result.getData() as? Map<String, Any?>
+        data?.get("sessionId") as? String ?: error("Re-match failed")
     }
 
     private fun toSession(snap: DocumentSnapshot, me: String?): ChatSession? {

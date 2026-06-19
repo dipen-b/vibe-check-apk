@@ -61,6 +61,8 @@ class RealProfileRepository(
         }
 
         prefs.save(profile)
+        // Start 3-day Pro trial on first onboarding
+        prefs.startProTrial()
         profile
     }
 

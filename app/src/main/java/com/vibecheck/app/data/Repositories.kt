@@ -8,6 +8,7 @@ import com.vibecheck.app.core.model.HeatmapScope
 import com.vibecheck.app.core.model.MatchState
 import com.vibecheck.app.core.model.Mood
 import com.vibecheck.app.core.model.MoodCheckIn
+import com.vibecheck.app.core.model.PreviousMatch
 import com.vibecheck.app.core.model.ProfileState
 import com.vibecheck.app.core.model.RegionInfo
 import com.vibecheck.app.core.model.RegionMoodAggregate
@@ -74,6 +75,15 @@ interface ChatRepository {
 
     /** Get AI-suggested replies based on chat context. */
     suspend fun getReplySuggestions(sessionId: String, lastMessage: String): Result<List<String>>
+
+    /** Get list of previous matches user can re-connect with (Pro feature). */
+    fun previousMatches(): Flow<List<PreviousMatch>>
+
+    /** Record a match for future re-matching. */
+    suspend fun savePreviousMatch(match: PreviousMatch)
+
+    /** Request to re-match with a previous peer. */
+    suspend fun requestReMatch(previousMatchSessionId: String): Result<String> // returns new sessionId
 }
 
 interface BillingRepository {

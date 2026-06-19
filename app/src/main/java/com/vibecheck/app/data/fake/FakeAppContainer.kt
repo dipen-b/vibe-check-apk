@@ -277,6 +277,16 @@ class FakeChatRepository(private val scope: CoroutineScope, private val billingR
             "that makes sense",
         ))
 
+    override fun previousMatches(): kotlinx.coroutines.flow.Flow<List<com.vibecheck.app.core.model.PreviousMatch>> =
+        kotlinx.coroutines.flow.flowOf(emptyList())
+
+    override suspend fun savePreviousMatch(match: com.vibecheck.app.core.model.PreviousMatch) {
+        // No-op in debug
+    }
+
+    override suspend fun requestReMatch(previousMatchSessionId: String): Result<String> =
+        Result.success(java.util.UUID.randomUUID().toString()) // return fake new session ID
+
     private fun appendMessage(sessionId: String, fromMe: Boolean, text: String) {
         val message = ChatMessage(
             id = UUID.randomUUID().toString(),
@@ -300,7 +310,7 @@ class FakeBillingRepository : BillingRepository {
     override val isSubscribed: Flow<Boolean> = subscribed
     // Dual currency per the SOW (US + UK). The real PlayBillingRepository reads
     // the localised price from Play; this is the demo stand-in.
-    override val monthlyPriceFormatted: Flow<String?> = MutableStateFlow("$29.00 / £29.00")
+    override val monthlyPriceFormatted: Flow<String?> = MutableStateFlow("$3.99 / £3.99")
 
     override suspend fun launchPurchase(activity: Activity): Result<Unit> {
         delay(1200) // simulate the Play purchase sheet (demo — no real charge)
