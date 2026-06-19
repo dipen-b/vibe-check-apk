@@ -1,17 +1,21 @@
 package com.vibecheck.app.ui.onboarding
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,12 +23,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Map
@@ -45,7 +50,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,6 +59,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -66,6 +71,7 @@ import com.vibecheck.app.core.model.AgeBracket
 import com.vibecheck.app.core.reminder.ReminderScheduler
 import com.vibecheck.app.data.AppContainer
 import com.vibecheck.app.ui.components.pressBounce
+import com.vibecheck.app.ui.theme.Violet
 import kotlinx.coroutines.launch
 
 private enum class OnboardingStep { WELCOME, AGE, FINISH }
@@ -85,11 +91,12 @@ fun OnboardingScreen(container: AppContainer, onComplete: () -> Unit) {
         Column(
             Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
                 .navigationBarsPadding()
-                .padding(horizontal = 24.dp, vertical = 32.dp),
+                .padding(horizontal = 24.dp, vertical = 20.dp),
         ) {
-            ProgressDots(current = step.ordinal, total = OnboardingStep.entries.size)
-            Spacer(Modifier.height(24.dp))
+            ProgressIndicator(current = step.ordinal, total = OnboardingStep.entries.size)
+            Spacer(Modifier.height(32.dp))
 
             AnimatedContent(
                 targetState = step,
@@ -119,120 +126,189 @@ fun OnboardingScreen(container: AppContainer, onComplete: () -> Unit) {
                             val bracket = ageChoice ?: return@FinishStep
                             submitting = true
                             coroutineScope.launch {
-                                val result = container.profileRepository.completeOnboarding(
-                                    ageBracket = bracket,
-                                    username = username.ifBlank { null },
-                                )
-                                submitting = false
-                                result.fold(
-                                    onSuccess = {
-                                        if (reminderOptIn) ReminderScheduler.enable(context)
+                                container.profileRepository.completeOnboarding(bracket, username.ifBlank { null })
+                                    .onSuccess {
+                                        if (reminderOptIn) {
+                                            ReminderScheduler.enable(context)
+                                        }
                                         onComplete()
-                                    },
-                                    onFailure = {
-                                        snackbarHostState.showSnackbar(it.message ?: "Something went wrong.")
-                                    },
-                                )
+                                    }
+                                    .onFailure {
+                                        snackbarHostState.showSnackbar(it.message ?: "Error")
+                                        submitting = false
+                                    }
                             }
                         },
                     )
                 }
             }
+
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 16.dp),
+                snackbar = { Snackbar(it) },
+            )
         }
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
-            snackbar = { Snackbar(it) },
-        )
     }
 }
 
 @Composable
-private fun ProgressDots(current: Int, total: Int) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Spacer(Modifier.weight(1f))
-        repeat(total) { index ->
-            Box(
-                Modifier
-                    .size(if (index == current) 10.dp else 8.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (index == current) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.outlineVariant
-                    )
-            )
+private fun ProgressIndicator(current: Int, total: Int) {
+    Column(Modifier.fillMaxWidth()) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            repeat(total) { index ->
+                Box(
+                    Modifier
+                        .height(3.dp)
+                        .weight(1f)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(
+                            if (index <= current) Violet else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                        )
+                )
+            }
         }
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Step ${current + 1} of $total",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
 @Composable
 private fun WelcomeStep(onContinue: () -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxSize()) {
-        Spacer(Modifier.weight(1f))
-        Text("💜", fontSize = 56.sp)
-        Spacer(Modifier.height(16.dp))
-        Text(
-            "Hey. How are you, really?",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Medium,
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            "VibeCheck is the small daily honest answer — 30 seconds, no audience.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(28.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxWidth()) {
-            BulletRow(Icons.Outlined.Mood, "One tap a day to log how you're feeling")
-            BulletRow(Icons.Outlined.Map, "See how the country's feeling, anonymously")
-            BulletRow(Icons.Outlined.Forum, "Talk to someone on your wavelength — anonymously")
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Spacer(Modifier.height(12.dp))
+
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("💜", fontSize = 72.sp)
+            Spacer(Modifier.height(20.dp))
+            Text(
+                "Hey. How are you,\nreally?",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.ExtraBold,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                fontSize = 32.sp,
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "Check in daily. See patterns. Connect with others on your wavelength.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
         }
-        Spacer(Modifier.height(20.dp))
-        PrivacyCard()
-        Spacer(Modifier.weight(1f))
-        Button(
-            onClick = onContinue,
-            modifier = Modifier.fillMaxWidth().height(52.dp).pressBounce(),
-        ) { Text("Get started") }
-        Spacer(Modifier.height(8.dp))
-        Text(
-            "Not a medical device · 16+",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
+            FeatureCard(Icons.Outlined.Mood, "Daily check-in", "One tap to log your vibe — 30 seconds")
+            FeatureCard(Icons.Outlined.Map, "See patterns", "Visualize how you've been feeling over time")
+            FeatureCard(Icons.Outlined.Forum, "Connect safely", "Talk to others anonymously, match by mood")
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
+            PrivacyCard()
+            Button(
+                onClick = onContinue,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .pressBounce(),
+                colors = ButtonDefaults.buttonColors(containerColor = Violet),
+                shape = RoundedCornerShape(16.dp),
+            ) {
+                Text("Get started", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+            Text(
+                "Not a medical device · Ages 16+",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+            )
+        }
     }
 }
 
 @Composable
-private fun BulletRow(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.width(12.dp))
-        Text(text, style = MaterialTheme.typography.bodyMedium)
+private fun FeatureCard(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    description: String,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = Violet.copy(alpha = 0.08f),
+        ),
+        border = androidx.compose.material3.CardDefaults.outlinedCardBorder()
+            .copy(brush = androidx.compose.foundation.BorderStroke(1.dp, Violet.copy(alpha = 0.2f)).brush),
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = Violet,
+                modifier = Modifier.size(28.dp),
+            )
+            Column(Modifier.weight(1f)) {
+                Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text(
+                    description,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 
 @Composable
 private fun PrivacyCard() {
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+        ),
+        shape = RoundedCornerShape(16.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.Top) {
-            Icon(Icons.Outlined.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.width(12.dp))
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(
+                Icons.Outlined.Lock,
+                contentDescription = null,
+                tint = Violet,
+                modifier = Modifier.size(24.dp),
+            )
             Column {
-                Text("Anonymous — even to us", fontWeight = FontWeight.Medium)
+                Text(
+                    "Anonymous — even from us",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "No email, no phone, no real name. Built for the US and UK, " +
-                        "compliant with UK Online Safety Act + US COPPA.",
-                    style = MaterialTheme.typography.bodySmall,
+                    "No email, phone, or real name. Compliant with UK OSA + US COPPA.",
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -248,86 +324,149 @@ private fun AgeStep(
     onContinue: () -> Unit,
 ) {
     val under16 = selected == AgeBracket.UNDER_16
-    Column(modifier = Modifier.fillMaxSize()) {
-        Text(
-            "Quick age check",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Medium,
-        )
-        Spacer(Modifier.height(6.dp))
-        Text(
-            "VibeCheck is for ages ${AppConfig.MIN_AGE_YEARS} and over in the US and UK.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(24.dp))
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Column {
+            Text(
+                "Age verification",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 28.sp,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "VibeCheck is for ages ${AppConfig.MIN_AGE_YEARS}+ in the US and UK.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(28.dp))
 
-        AgeChoice("I'm 18 or over", selected == AgeBracket.EIGHTEEN_PLUS) {
-            onSelect(AgeBracket.EIGHTEEN_PLUS)
-        }
-        Spacer(Modifier.height(10.dp))
-        AgeChoice("I'm 16 or 17", selected == AgeBracket.SIXTEEN_TO_SEVENTEEN) {
-            onSelect(AgeBracket.SIXTEEN_TO_SEVENTEEN)
-        }
-        Spacer(Modifier.height(10.dp))
-        AgeChoice("I'm under 16", under16, dimmed = true) {
-            onSelect(AgeBracket.UNDER_16)
-        }
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                AgeChoice(
+                    "I'm 18 or older",
+                    selected == AgeBracket.EIGHTEEN_PLUS,
+                    enabled = true,
+                ) {
+                    onSelect(AgeBracket.EIGHTEEN_PLUS)
+                }
+                AgeChoice(
+                    "I'm 16 or 17",
+                    selected == AgeBracket.SIXTEEN_TO_SEVENTEEN,
+                    enabled = true,
+                ) {
+                    onSelect(AgeBracket.SIXTEEN_TO_SEVENTEEN)
+                }
+                AgeChoice(
+                    "I'm under 16",
+                    under16,
+                    enabled = true,
+                    dimmed = true,
+                ) {
+                    onSelect(AgeBracket.UNDER_16)
+                }
+            }
 
-        if (under16) {
-            Spacer(Modifier.height(16.dp))
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                ),
-            ) {
-                Text(
-                    "VibeCheck isn't for under-16s yet. Take care of yourself 💜",
-                    modifier = Modifier.padding(14.dp),
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                )
+            if (under16) {
+                Spacer(Modifier.height(20.dp))
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                    ),
+                    shape = RoundedCornerShape(16.dp),
+                ) {
+                    Text(
+                        "VibeCheck isn't available yet for under-16s. Take care 💜",
+                        modifier = Modifier.padding(16.dp),
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
             }
         }
 
-        Spacer(Modifier.weight(1f))
-        Row {
-            TextButton(onClick = onBack) { Text("Back") }
-            Spacer(Modifier.weight(1f))
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            TextButton(onClick = onBack, modifier = Modifier.weight(1f)) {
+                Text("Back", fontSize = 16.sp)
+            }
             Button(
                 onClick = onContinue,
                 enabled = selected != null && !under16,
-                modifier = Modifier.height(52.dp),
-            ) { Text("Continue") }
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Violet),
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                Text("Continue", fontWeight = FontWeight.Bold)
+            }
         }
     }
 }
 
 @Composable
-private fun AgeChoice(label: String, selected: Boolean, dimmed: Boolean = false, onClick: () -> Unit) {
-    val borderColor = when {
-        dimmed && selected -> MaterialTheme.colorScheme.error
-        selected -> MaterialTheme.colorScheme.primary
-        else -> MaterialTheme.colorScheme.outlineVariant
-    }
+private fun AgeChoice(
+    label: String,
+    selected: Boolean,
+    enabled: Boolean = true,
+    dimmed: Boolean = false,
+    onClick: () -> Unit,
+) {
+    val scale by animateFloatAsState(
+        targetValue = if (selected) 1.02f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium,
+        ),
+        label = "ageScale",
+    )
+
+    val borderColor by animateColorAsState(
+        targetValue = if (selected) Violet else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+        label = "ageBorder",
+    )
+
     Card(
-        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .scale(scale)
+            .border(
+                width = if (selected) 2.dp else 1.5.dp,
+                color = borderColor,
+                shape = RoundedCornerShape(14.dp),
+            )
+            .clickable(enabled = enabled, onClick = onClick),
         colors = CardDefaults.cardColors(
-            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer
-            else MaterialTheme.colorScheme.surface,
+            containerColor = if (selected) Violet.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface,
         ),
-        border = androidx.compose.foundation.BorderStroke(
-            width = if (selected) 2.dp else 1.dp,
-            color = borderColor,
-        ),
-        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
     ) {
-        Text(
-            label,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp),
-            style = MaterialTheme.typography.titleMedium,
-            color = if (dimmed) MaterialTheme.colorScheme.onSurfaceVariant
-            else MaterialTheme.colorScheme.onSurface,
-        )
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                label,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                color = if (dimmed) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                fontSize = 15.sp,
+            )
+            if (selected) {
+                Icon(
+                    Icons.Filled.Check,
+                    contentDescription = null,
+                    tint = Violet,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+        }
     }
 }
 
@@ -341,54 +480,93 @@ private fun FinishStep(
     onBack: () -> Unit,
     onFinish: () -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        Text(
-            "Almost done",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Medium,
-        )
-        Spacer(Modifier.height(20.dp))
-        OutlinedTextField(
-            value = username,
-            onValueChange = onUsernameChange,
-            label = { Text("Username (optional)") },
-            supportingText = { Text("Never your real name. Letters, digits, underscore.") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Spacer(Modifier.height(20.dp))
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Row(
-                Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Column {
+            Text(
+                "Almost there!",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 28.sp,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Set up your profile and preferences.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(28.dp))
+
+            Text(
+                "Your name (optional)",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+            OutlinedTextField(
+                value = username,
+                onValueChange = onUsernameChange,
+                placeholder = { Text("E.g., Alex or Kira") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+            )
+
+            Spacer(Modifier.height(24.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = Violet.copy(alpha = 0.08f),
+                ),
+                shape = RoundedCornerShape(14.dp),
             ) {
-                Column(Modifier.weight(1f)) {
-                    Text("Daily reminder", fontWeight = FontWeight.Medium)
-                    Text(
-                        "A gentle nudge every day at 8:00 pm",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                        .clickable { onReminderChange(!reminderOptIn) },
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Daily reminder", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                        Text(
+                            "Get a nudge at 8 PM to check in",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(checked = reminderOptIn, onCheckedChange = onReminderChange)
                 }
-                Switch(checked = reminderOptIn, onCheckedChange = onReminderChange)
             }
         }
-        Spacer(Modifier.weight(1f))
-        Row {
-            TextButton(onClick = onBack, enabled = !submitting) { Text("Back") }
-            Spacer(Modifier.weight(1f))
+
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Button(
                 onClick = onFinish,
                 enabled = !submitting,
-                modifier = Modifier.height(52.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .pressBounce(),
+                colors = ButtonDefaults.buttonColors(containerColor = Violet),
+                shape = RoundedCornerShape(16.dp),
             ) {
-                if (submitting) CircularProgressIndicator(
-                    Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp,
-                ) else Text("Start vibing")
+                if (submitting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Text("Let's go", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+            TextButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
+                Text("Back", fontSize = 16.sp)
             }
         }
     }

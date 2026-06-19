@@ -177,6 +177,18 @@ fun HeatmapScreen(container: AppContainer) {
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().padding(16.dp)) {
+            Text(
+                "Mood Map",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                "See how people are feeling across regions — all anonymous, no individual data.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(14.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.weight(1f)) {
                     ScopeChoice.entries.forEachIndexed { index, choice ->
@@ -201,13 +213,7 @@ fun HeatmapScreen(container: AppContainer) {
                     )
                 }
             }
-            Spacer(Modifier.height(6.dp))
-            Text(
-                "Aggregated + anonymous — no individual moods.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
 
             Box(Modifier.fillMaxSize()) {
                 when {
@@ -304,34 +310,39 @@ private fun ListView(data: List<RegionMoodAggregate>) {
 @Composable
 private fun RegionRow(agg: RegionMoodAggregate) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(Modifier),
+        shape = RoundedCornerShape(14.dp),
     ) {
         Row(
-            Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Box(
-                Modifier.size(12.dp).clip(CircleShape).background(valenceColor(agg.averageValence)),
+                Modifier.size(14.dp).clip(CircleShape).background(valenceColor(agg.averageValence)),
             )
-            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     "${agg.region.name} ${flag(agg.region.countryCode)}",
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
                 )
                 Text(
                     "${agg.checkInCount} check-ins",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            AssistChip(
-                onClick = {},
-                label = { Text(moodLabel(agg.averageValence)) },
-                colors = AssistChipDefaults.assistChipColors(
-                    labelColor = valenceColor(agg.averageValence),
-                ),
+            Text(
+                moodLabel(agg.averageValence),
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 13.sp,
+                color = valenceColor(agg.averageValence),
             )
         }
     }

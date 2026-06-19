@@ -1,5 +1,11 @@
 package com.vibecheck.app.ui.chat
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,7 +25,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -53,7 +58,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -63,6 +69,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vibecheck.app.core.model.ChatMessage
 import com.vibecheck.app.core.model.ChatSession
 import com.vibecheck.app.data.AppContainer
+import com.vibecheck.app.ui.theme.Violet
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -80,7 +87,6 @@ fun ChatScreen(container: AppContainer, sessionId: String, onClosed: () -> Unit)
     var sending by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
 
-    // Live countdown based on session expiry
     var secondsLeft by remember { mutableLongStateOf(300L) }
     LaunchedEffect(session) {
         val s = session ?: return@LaunchedEffect
@@ -92,7 +98,6 @@ fun ChatScreen(container: AppContainer, sessionId: String, onClosed: () -> Unit)
         }
     }
 
-    // Auto-scroll to latest message
     val listState = rememberLazyListState()
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1)
@@ -117,11 +122,15 @@ fun ChatScreen(container: AppContainer, sessionId: String, onClosed: () -> Unit)
             TopAppBar(
                 title = {
                     Column {
-                        Text("Anonymous chat", fontWeight = FontWeight.Medium)
+                        Text(
+                            "Anonymous chat",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                        )
                         session?.peerMood?.let {
                             Text(
-                                "They're feeling ${it.name.lowercase()}",
-                                style = MaterialTheme.typography.bodySmall,
+                                "${it.emoji} They're feeling ${it.label.lowercase()}",
+                                style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
@@ -145,52 +154,67 @@ fun ChatScreen(container: AppContainer, sessionId: String, onClosed: () -> Unit)
                 .imePadding()
                 .navigationBarsPadding(),
         ) {
-            // Timer bar
             TimerBar(secondsLeft = secondsLeft, total = 300L)
 
-            // Messages
             LazyColumn(
                 state = listState,
                 modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 items(messages, key = { it.id }) { msg ->
                     MessageBubble(msg)
                 }
             }
 
-            // Helplines footer
-            HelplinesFooter()
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(8.dp))
 
-            // Input
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 OutlinedTextField(
                     value = messageText,
                     onValueChange = { if (it.length <= 280) messageText = it },
-                    placeholder = { Text("Say something…") },
-                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("Say something…", fontSize = 14.sp) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Sentences,
                         imeAction = ImeAction.Send,
                     ),
                     keyboardActions = KeyboardActions(onSend = { sendMessage() }),
-                    shape = RoundedCornerShape(24.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    textStyle = MaterialTheme.typography.bodyMedium,
                 )
                 IconButton(
                     onClick = sendMessage,
                     enabled = messageText.isNotBlank() && !sending,
-                    modifier = Modifier.padding(start = 4.dp),
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(
+                            if (messageText.isNotBlank() && !sending) Violet else MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(12.dp),
+                        ),
                 ) {
-                    if (sending) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                    else Icon(Icons.AutoMirrored.Outlined.Send, contentDescription = "Send")
+                    if (sending) {
+                        CircularProgressIndicator(
+                            Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = Color.White,
+                        )
+                    } else {
+                        Icon(
+                            Icons.AutoMirrored.Outlined.Send,
+                            contentDescription = "Send",
+                            tint = if (messageText.isNotBlank()) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }
@@ -224,53 +248,107 @@ private fun TimerBar(secondsLeft: Long, total: Long) {
     val mins = secondsLeft / 60
     val secs = secondsLeft % 60
     val isLow = secondsLeft <= 60
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+
+    val progressColor by animateColorAsState(
+        targetValue = if (isLow) MaterialTheme.colorScheme.error else Violet,
+        label = "timerColor",
+    )
+
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+    ) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
                 "Chat ends in",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Medium,
             )
             Text(
                 "%d:%02d".format(mins, secs),
                 style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Medium,
-                color = if (isLow) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold,
+                color = progressColor,
+                fontSize = 13.sp,
             )
         }
-        Spacer(Modifier.height(2.dp))
+        Spacer(Modifier.height(8.dp))
         LinearProgressIndicator(
             progress = { progress },
-            modifier = Modifier.fillMaxWidth(),
-            color = if (isLow) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+            modifier = Modifier.fillMaxWidth().height(4.dp),
+            color = progressColor,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
         )
     }
 }
 
 @Composable
-private fun MessageBubble(msg: ChatMessage) {
-    val bubbleColor = if (msg.fromMe) MaterialTheme.colorScheme.primaryContainer
-                      else MaterialTheme.colorScheme.surfaceVariant
-    val textColor = if (msg.fromMe) MaterialTheme.colorScheme.onPrimaryContainer
-                    else MaterialTheme.colorScheme.onSurface
-    Row(
-        Modifier.fillMaxWidth(),
-        horizontalArrangement = if (msg.fromMe) Arrangement.End else Arrangement.Start,
+private fun MessageBubble(message: ChatMessage) {
+    AnimatedVisibility(
+        visible = true,
+        enter = slideInHorizontally(
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMedium,
+            ),
+        ) + fadeIn(),
     ) {
-        Box(
-            Modifier
-                .widthIn(max = 280.dp)
-                .clip(
-                    RoundedCornerShape(
-                        topStart = 18.dp, topEnd = 18.dp,
-                        bottomStart = if (msg.fromMe) 18.dp else 4.dp,
-                        bottomEnd = if (msg.fromMe) 4.dp else 18.dp,
-                    )
-                )
-                .background(bubbleColor)
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            horizontalArrangement = if (message.fromMe) Arrangement.End else Arrangement.Start,
         ) {
-            Text(msg.text, color = textColor, style = MaterialTheme.typography.bodyMedium)
+            Card(
+                modifier = Modifier
+                    .widthIn(max = 280.dp)
+                    .shadow(
+                        elevation = if (message.fromMe) 3.dp else 1.dp,
+                        shape = RoundedCornerShape(16.dp),
+                        clip = true,
+                    ),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (message.fromMe) {
+                        Violet
+                    } else {
+                        MaterialTheme.colorScheme.surfaceVariant
+                    },
+                ),
+                shape = RoundedCornerShape(16.dp),
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                ) {
+                    Text(
+                        message.text,
+                        color = if (message.fromMe) Color.White else MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        formatTime(message.sentAtMillis),
+                        color = if (message.fromMe) {
+                            Color.White.copy(alpha = 0.7f)
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = 11.sp,
+                    )
+                }
+            }
         }
     }
 }
+
+private fun formatTime(millis: Long): String {
+    val sdf = java.text.SimpleDateFormat("HH:mm", java.util.Locale.US)
+    return sdf.format(java.util.Date(millis))
+}
+

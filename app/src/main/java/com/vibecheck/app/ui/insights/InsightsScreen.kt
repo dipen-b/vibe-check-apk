@@ -109,13 +109,13 @@ fun InsightsScreen(container: AppContainer, onUpgrade: () -> Unit) {
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 24.dp),
+                .padding(horizontal = 24.dp, vertical = 28.dp),
         ) {
-            Text("Your Insights", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Medium)
-            Spacer(Modifier.height(4.dp))
+            Text("Your Insights", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
             Text(
                 "This week at a glance.",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(20.dp))
@@ -283,7 +283,12 @@ private fun PremiumSection(
                         textAlign = TextAlign.Center,
                     )
                     Spacer(Modifier.height(10.dp))
-                    Button(onClick = onUpgrade) { Text("Upgrade — \$29.00 / £29.00") }
+                    Button(
+                        onClick = onUpgrade,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Upgrade to Plus")
+                    }
                 }
             }
         }

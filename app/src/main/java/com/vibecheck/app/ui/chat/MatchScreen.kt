@@ -120,36 +120,35 @@ fun MatchScreen(container: AppContainer, onChatStarted: (String) -> Unit, onOpen
     Column(
         Modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .padding(horizontal = 24.dp, vertical = 28.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             "Anonymous Match",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Medium,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
         )
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(8.dp))
         Text(
-            "Chat with someone on your wavelength — no names, no photos.",
+            "Connect with someone on your wavelength.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(28.dp))
 
-        // Opt-in toggle card
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             modifier = Modifier.fillMaxWidth(),
         ) {
             androidx.compose.foundation.layout.Row(
-                Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Enable anonymous chat", fontWeight = FontWeight.Medium)
+                    Text("Enable chat", fontWeight = FontWeight.SemiBold)
                     Text(
-                        "Opt in to be matched with others who feel similarly.",
+                        "Join to match with others who feel similarly",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -210,7 +209,6 @@ fun MatchScreen(container: AppContainer, onChatStarted: (String) -> Unit, onOpen
         }
 
         Spacer(Modifier.weight(1f))
-        HelplinesFooter()
     }
 
     // Trial limit modal
@@ -235,23 +233,23 @@ fun MatchScreen(container: AppContainer, onChatStarted: (String) -> Unit, onOpen
 @Composable
 private fun IdleContent(onSearch: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("💬", fontSize = 56.sp)
-        Spacer(Modifier.height(12.dp))
+        Text("💬", fontSize = 60.sp)
+        Spacer(Modifier.height(16.dp))
         Text(
-            "Ready to connect?",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Medium,
+            "Ready to talk?",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
         )
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(8.dp))
         Text(
-            "We match on mood within the last 2 hours. Chat auto-ends in 5 minutes.",
+            "Match on mood. No names, no photos. Chat ends in 5 mins.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(24.dp))
         Button(onClick = onSearch, modifier = Modifier.fillMaxWidth().height(52.dp).pressBounce()) {
-            Text("Find someone")
+            Text("Find someone", fontSize = 16.sp)
         }
     }
 }
@@ -276,37 +274,37 @@ private fun SearchingContent(onCancel: () -> Unit) {
     )
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(120.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(140.dp), contentAlignment = Alignment.Center) {
             listOf(pulse1, pulse2, pulse3).forEach { scale ->
                 Box(
                     Modifier
-                        .size(80.dp)
+                        .size(90.dp)
                         .scale(scale)
                         .border(2.dp, Violet.copy(alpha = (1.4f - scale) / 0.8f), CircleShape),
                 )
             }
             Box(
                 Modifier
-                    .size(48.dp)
+                    .size(56.dp)
                     .background(Violet, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("💜", fontSize = 22.sp)
+                Text("💜", fontSize = 24.sp)
             }
         }
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
         Text(
-            "Looking for your match…",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Medium,
+            "Finding your match",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
         )
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(6.dp))
         Text(
-            "Up to 30 seconds",
+            "Usually within 30 seconds",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(24.dp))
         OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth().height(48.dp)) {
             Text("Cancel")
         }
@@ -436,29 +434,3 @@ private fun TrialLimitedContent(onUpgrade: () -> Unit) {
     }
 }
 
-@Composable
-fun HelplinesFooter() {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        shape = RoundedCornerShape(12.dp),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                "Need to talk to someone now?",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Medium,
-            )
-            Text(
-                "🇺🇸 988 Suicide & Crisis Lifeline — call or text 988",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                "🇬🇧 Samaritans — call 116 123 (free, 24/7)",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}

@@ -128,26 +128,34 @@ private fun NotYetCheckedIn(onSubmit: (Mood, String?) -> Unit) {
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 24.dp),
+            .padding(horizontal = 24.dp, vertical = 28.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
         Text(
-            "How's your vibe right now?",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Medium,
+            "How's your vibe?",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
         )
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(8.dp))
         Text(
             nowLabel,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(28.dp))
+
+        Text(
+            "Pick one",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(12.dp))
 
         LazyVerticalGrid(
             columns = GridCells.Fixed(3),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.fillMaxWidth().height(220.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth().height(240.dp),
         ) {
             items(Mood.entries) { mood ->
                 MoodCell(
@@ -157,11 +165,19 @@ private fun NotYetCheckedIn(onSubmit: (Mood, String?) -> Unit) {
                 )
             }
         }
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(28.dp))
+
+        Text(
+            "Add context (optional)",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(8.dp))
+
         OutlinedTextField(
             value = note,
             onValueChange = { note = it },
-            label = { Text("Add a few words (optional)") },
+            label = { Text("What's on your mind?") },
             supportingText = {
                 Text(
                     "$wordCount/${AppConfig.MAX_NOTE_WORDS} words",
@@ -173,7 +189,7 @@ private fun NotYetCheckedIn(onSubmit: (Mood, String?) -> Unit) {
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(24.dp))
         Button(
             onClick = {
                 val mood = selected ?: return@Button
@@ -185,7 +201,7 @@ private fun NotYetCheckedIn(onSubmit: (Mood, String?) -> Unit) {
         ) {
             if (submitting) CircularProgressIndicator(
                 Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp,
-            ) else Text("Check in")
+            ) else Text("Check in", fontSize = 16.sp)
         }
         Spacer(Modifier.height(80.dp))
     }

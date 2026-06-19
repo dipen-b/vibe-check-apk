@@ -11,9 +11,16 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Insights
@@ -21,6 +28,7 @@ import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Mood
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -30,9 +38,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vibecheck.app.data.AppContainer
 import com.vibecheck.app.ui.chat.MatchScreen
 import com.vibecheck.app.ui.checkin.CheckInScreen
@@ -56,8 +68,46 @@ fun HomeScaffold(
     onOpenSubscription: () -> Unit,
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(HomeTab.CHECK_IN) }
+    val currentStreak by container.profileRepository.currentStreak
+        .collectAsStateWithLifecycle(initialValue = 0L)
+    val trialDaysRemaining by container.profileRepository.proTrialDaysRemaining
+        .collectAsStateWithLifecycle(initialValue = 0L)
 
     Scaffold(
+        topBar = {
+            if (currentStreak > 0 || trialDaysRemaining > 0) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 10.dp)
+                ) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (currentStreak > 0) {
+                            Text(
+                                "🔥 $currentStreak-day",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        if (trialDaysRemaining > 0) {
+                            Text(
+                                "💜 Trial: ${trialDaysRemaining}d",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                            )
+                        }
+                    }
+                }
+            }
+        },
         bottomBar = {
             NavigationBar {
                 HomeTab.entries.forEach { tab ->

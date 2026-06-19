@@ -23,6 +23,10 @@ import kotlinx.coroutines.flow.Flow
 interface ProfileRepository {
     val profileState: Flow<ProfileState>
 
+    // Freemium metrics
+    val currentStreak: Flow<Long>
+    val proTrialDaysRemaining: Flow<Long>
+
     /** Rejects [AgeBracket.UNDER_16]. [username] is optional and non-identifying. */
     suspend fun completeOnboarding(ageBracket: AgeBracket, username: String?): Result<UserProfile>
 

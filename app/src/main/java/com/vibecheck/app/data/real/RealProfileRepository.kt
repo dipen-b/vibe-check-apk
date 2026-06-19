@@ -29,6 +29,10 @@ class RealProfileRepository(
         if (profile == null) ProfileState.NeedsOnboarding else ProfileState.Ready(profile)
     }
 
+    override val currentStreak: Flow<Long> = prefs.currentStreak
+
+    override val proTrialDaysRemaining: Flow<Long> = prefs.proTrialDaysRemaining
+
     override suspend fun completeOnboarding(
         ageBracket: AgeBracket,
         username: String?,

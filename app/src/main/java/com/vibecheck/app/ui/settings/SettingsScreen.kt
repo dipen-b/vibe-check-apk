@@ -5,7 +5,9 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,6 +16,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -60,6 +64,12 @@ fun SettingsScreen(container: AppContainer, onOpenSubscription: () -> Unit) {
     val profile = (profileState as? ProfileState.Ready)?.profile
     val isSubscribed by container.billingRepository.isSubscribed
         .collectAsStateWithLifecycle(initialValue = false)
+    val price by container.billingRepository.monthlyPriceFormatted
+        .collectAsStateWithLifecycle(initialValue = "$3.99 / £3.99")
+    val todayCheckIn by container.moodRepository.todayCheckIn
+        .collectAsStateWithLifecycle(initialValue = null)
+    val recentHistory by container.moodRepository.history()
+        .collectAsStateWithLifecycle(initialValue = emptyList())
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -122,22 +132,104 @@ fun SettingsScreen(container: AppContainer, onOpenSubscription: () -> Unit) {
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
                 .navigationBarsPadding()
-                .padding(horizontal = 20.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+                .padding(horizontal = 24.dp, vertical = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
-            Text("Settings", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Medium)
+            Text("Settings", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
 
             // Profile section
             SettingsSection(title = "Profile") {
+                // Username display
+                val displayName = profile?.username?.takeIf { it.isNotBlank() } ?: "Anonymous"
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Box(
+                        Modifier
+                            .size(48.dp)
+                            .background(
+                                com.vibecheck.app.ui.theme.Violet.copy(alpha = 0.15f),
+                                shape = androidx.compose.foundation.shape.CircleShape,
+                            ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            displayName.first().uppercase(),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = com.vibecheck.app.ui.theme.Violet,
+                        )
+                    }
+                    Column {
+                        Text(
+                            displayName,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        profile?.ageBracket?.let {
+                            Text(
+                                it.label,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+
+                androidx.compose.material3.Divider()
+                Spacer(Modifier.height(12.dp))
+
+                // Latest vibe
+                val lastCheckIn = todayCheckIn ?: recentHistory.firstOrNull()
+                if (lastCheckIn != null) {
+                    val isToday = todayCheckIn != null
+                    val dayLabel = if (isToday) "Today's vibe" else "Last vibe"
+                    Text(
+                        dayLabel,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(lastCheckIn.mood.emoji, fontSize = 28.sp)
+                        Column {
+                            Text(
+                                lastCheckIn.mood.label,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            if (!lastCheckIn.note.isNullOrBlank()) {
+                                Text(
+                                    "\"${lastCheckIn.note}\"",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    androidx.compose.material3.Divider()
+                    Spacer(Modifier.height(12.dp))
+                }
+
                 OutlinedTextField(
                     value = usernameInput,
                     onValueChange = { usernameInput = it.filter { c -> c.isLetterOrDigit() || c == '_' }.take(20) },
-                    label = { Text("Username (optional)") },
+                    label = { Text("Change username") },
                     supportingText = { Text("Letters, digits, underscore · max 20 chars") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(8.dp))
                 Button(
                     onClick = {
                         scope.launch {
@@ -150,15 +242,6 @@ fun SettingsScreen(container: AppContainer, onOpenSubscription: () -> Unit) {
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text("Save username") }
-
-                profile?.ageBracket?.let { bracket ->
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "Age bracket: ${bracket.label}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
             }
 
             // Notifications
@@ -202,13 +285,13 @@ fun SettingsScreen(container: AppContainer, onOpenSubscription: () -> Unit) {
                     )
                 } else {
                     Text(
-                        "Upgrade for 30-day history, pattern insights, and CSV export.",
+                        "Unlock 30-day history, pattern insights, and CSV export.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.height(8.dp))
                     Button(onClick = onOpenSubscription, modifier = Modifier.fillMaxWidth()) {
-                        Text("Upgrade — \$29.00 / £29.00 / mo")
+                        Text("Upgrade to Plus — ${price}/mo")
                     }
                     TextButton(
                         onClick = {
@@ -223,21 +306,6 @@ fun SettingsScreen(container: AppContainer, onOpenSubscription: () -> Unit) {
                         modifier = Modifier.fillMaxWidth(),
                     ) { Text("Restore purchases") }
                 }
-            }
-
-            // Support
-            SettingsSection(title = "Need support?") {
-                Text(
-                    "🇺🇸 988 Suicide & Crisis Lifeline — call or text 988",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    "🇬🇧 Samaritans — 116 123 (free, 24/7)",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
 
             // Data & privacy

@@ -69,6 +69,9 @@ class FakeProfileRepository : ProfileRepository {
     private val state = MutableStateFlow<ProfileState>(ProfileState.NeedsOnboarding)
     override val profileState: Flow<ProfileState> = state
 
+    override val currentStreak: Flow<Long> = MutableStateFlow(7L)
+    override val proTrialDaysRemaining: Flow<Long> = MutableStateFlow(2L)
+
     override suspend fun completeOnboarding(ageBracket: AgeBracket, username: String?): Result<UserProfile> {
         if (ageBracket == AgeBracket.UNDER_16) {
             return Result.failure(IllegalArgumentException("VibeCheck is only for people aged ${AppConfig.MIN_AGE_YEARS}+."))
@@ -147,9 +150,9 @@ class FakeMoodRepository : MoodRepository {
         )
         val now = System.currentTimeMillis()
         val dayMs = 24L * 60 * 60 * 1000
-        // Seeds start yesterday so today's check-in flow is demoable.
+        // i=0 is today so Settings and demo flows show today's vibe immediately.
         return moods.mapIndexed { i, mood ->
-            MoodCheckIn("seed-$i", mood, notes[i], now - (i + 1) * dayMs, "us-nyc")
+            MoodCheckIn("seed-$i", mood, notes[i], now - i * dayMs, "us-nyc")
         }
     }
 }
