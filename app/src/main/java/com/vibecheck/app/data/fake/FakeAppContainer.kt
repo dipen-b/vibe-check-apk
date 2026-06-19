@@ -71,6 +71,8 @@ class FakeProfileRepository : ProfileRepository {
 
     override val currentStreak: Flow<Long> = MutableStateFlow(7L)
     override val proTrialDaysRemaining: Flow<Long> = MutableStateFlow(2L)
+    override val darkMode: Flow<Boolean?> = MutableStateFlow(null)
+    override suspend fun setDarkMode(enabled: Boolean) = Unit
 
     override suspend fun completeOnboarding(ageBracket: AgeBracket, username: String?): Result<UserProfile> {
         if (ageBracket == AgeBracket.UNDER_16) {
@@ -402,31 +404,43 @@ class FakeMicroActionEngine : MicroActionEngine {
             MicroAction("happy-1", "Share the vibe", "Send someone a genuine compliment — it doubles the glow.", 2, ActionCategory.SOCIAL),
             MicroAction("happy-2", "Gratitude snapshot", "Note three things fuelling today's mood.", 2, ActionCategory.GRATITUDE),
             MicroAction("happy-3", "Ride the wave", "Knock out the small task you've been putting off.", 2, ActionCategory.CREATIVE),
+            MicroAction("happy-4", "Power walk", "Put on your favourite track and walk briskly for two minutes.", 2, ActionCategory.MOVEMENT),
+            MicroAction("happy-5", "Future you", "Write one sentence about the day you want to have tomorrow.", 1, ActionCategory.GRATITUDE),
         ),
         Mood.NEUTRAL to listOf(
             MicroAction("meh-1", "60-second reset", "Box breathing: in 4, hold 4, out 4, hold 4. Repeat 4 times.", 2, ActionCategory.BREATHING),
             MicroAction("meh-2", "Change the scenery", "Step outside or to a window for two minutes.", 2, ActionCategory.MOVEMENT),
             MicroAction("meh-3", "Tiny spark", "Play one song you loved as a teenager.", 2, ActionCategory.CREATIVE),
+            MicroAction("meh-4", "Body scan", "Start at your feet and relax each muscle group upward.", 2, ActionCategory.REST),
+            MicroAction("meh-5", "5-4-3-2-1", "Name 5 things you see, 4 you hear, 3 you feel, 2 you smell, 1 you taste.", 2, ActionCategory.BREATHING),
         ),
         Mood.SAD to listOf(
             MicroAction("sad-1", "4-7-8 breathing", "Inhale 4s, hold 7s, exhale 8s. Three slow rounds.", 2, ActionCategory.BREATHING),
             MicroAction("sad-2", "Reach out", "Message one person you trust — just \"hey, thinking of you\".", 2, ActionCategory.SOCIAL),
             MicroAction("sad-3", "Warmth break", "Make a warm drink and drink it away from screens.", 2, ActionCategory.REST),
+            MicroAction("sad-4", "One kind thing", "Do something small and kind for yourself — right now.", 2, ActionCategory.GRATITUDE),
+            MicroAction("sad-5", "Move gently", "A slow, easy stretch. No pressure, no performance.", 2, ActionCategory.MOVEMENT),
         ),
         Mood.ANGRY to listOf(
             MicroAction("angry-1", "Shake it off", "30 seconds of fast movement — stairs, jumping jacks, a brisk walk.", 2, ActionCategory.MOVEMENT),
             MicroAction("angry-2", "Cold reset", "Splash cold water on your face and name the feeling out loud.", 2, ActionCategory.REST),
             MicroAction("angry-3", "Unsent letter", "Write what you'd like to say. Don't send it.", 2, ActionCategory.CREATIVE),
+            MicroAction("angry-4", "10 long exhales", "Make each exhale twice as long as the inhale — it calms the nervous system fast.", 2, ActionCategory.BREATHING),
+            MicroAction("angry-5", "Name it to tame it", "Write down exactly what triggered you, then close the note.", 2, ActionCategory.CREATIVE),
         ),
         Mood.TIRED to listOf(
             MicroAction("tired-1", "Power pause", "Two minutes, eyes closed, shoulders dropped, slow breaths.", 2, ActionCategory.REST),
             MicroAction("tired-2", "Stretch tall", "Stand, reach for the ceiling, roll your neck slowly.", 2, ActionCategory.MOVEMENT),
             MicroAction("tired-3", "Water first", "Drink a full glass of water before the next coffee.", 2, ActionCategory.REST),
+            MicroAction("tired-4", "Sunlight hit", "Step outside for 2 minutes of natural light — resets your circadian rhythm.", 2, ActionCategory.MOVEMENT),
+            MicroAction("tired-5", "One win", "Write down the one thing you accomplished today, however small.", 1, ActionCategory.GRATITUDE),
         ),
         Mood.EXCITED to listOf(
             MicroAction("excited-1", "Channel it", "Jot the three ideas buzzing loudest before they fade.", 2, ActionCategory.CREATIVE),
             MicroAction("excited-2", "Spread it", "Tell someone what you're excited about.", 2, ActionCategory.SOCIAL),
             MicroAction("excited-3", "Anchor it", "One slow breath cycle so the energy lasts the day.", 2, ActionCategory.BREATHING),
+            MicroAction("excited-4", "Capture the vision", "Spend two minutes writing what success looks like for this energy.", 2, ActionCategory.CREATIVE),
+            MicroAction("excited-5", "Move with it", "Dance, jump, or sprint for 60 seconds — burn off the nervous energy.", 1, ActionCategory.MOVEMENT),
         ),
     )
 

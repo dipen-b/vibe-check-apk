@@ -23,12 +23,14 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import android.content.Intent
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
@@ -46,6 +48,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -111,6 +116,7 @@ private fun NotYetCheckedIn(onSubmit: (Mood, String?) -> Unit) {
     var selected by remember { mutableStateOf<Mood?>(null) }
     var note by remember { mutableStateOf("") }
     var submitting by remember { mutableStateOf(false) }
+    val haptic = LocalHapticFeedback.current
     val wordCount = remember(note) {
         if (note.isBlank()) 0 else note.trim().split(Regex("\\s+")).size
     }
@@ -194,6 +200,13 @@ private fun NotYetCheckedIn(onSubmit: (Mood, String?) -> Unit) {
             onClick = {
                 val mood = selected ?: return@Button
                 submitting = true
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                // Soft chime via ToneGenerator
+                runCatching {
+                    android.media.ToneGenerator(
+                        android.media.AudioManager.STREAM_NOTIFICATION, 60,
+                    ).startTone(android.media.ToneGenerator.TONE_PROP_ACK, 180)
+                }
                 onSubmit(mood, note.trim().ifBlank { null })
             },
             enabled = canSubmit,
@@ -256,6 +269,7 @@ private val Mood.localisedLabel: String
 
 @Composable
 private fun AlreadyCheckedIn(checkIn: MoodCheckIn, history: List<MoodCheckIn>) {
+    val context = LocalContext.current
     val streak = remember(history) { calculateStreak(history) }
     val zone = ZoneId.systemDefault()
     val todayFmt = remember { DateTimeFormatter.ofPattern("'Today,' h:mm a", Locale.UK) }
@@ -311,6 +325,19 @@ private fun AlreadyCheckedIn(checkIn: MoodCheckIn, history: List<MoodCheckIn>) {
         Spacer(Modifier.height(8.dp))
         SevenDayStrip(history)
         Spacer(Modifier.weight(1f))
+        OutlinedButton(
+            onClick = {
+                val shareText = "${checkIn.mood.emoji} Feeling ${checkIn.mood.localisedLabel.lowercase()} today" +
+                    checkIn.note?.let { " — \"$it\"" }.orEmpty() +
+                    " 💜 #VibeCheck"
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, shareText)
+                }
+                runCatching { context.startActivity(Intent.createChooser(intent, "Share my vibe")) }
+            },
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+        ) { Text("Share my vibe") }
         Text(
             "Come back tomorrow — one vibe a day keeps it honest.",
             style = MaterialTheme.typography.bodyMedium,

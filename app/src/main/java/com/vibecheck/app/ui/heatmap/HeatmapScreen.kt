@@ -28,7 +28,7 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconToggleButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -40,9 +40,11 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -70,6 +72,7 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.vibecheck.app.core.model.HeatmapScope
 import com.vibecheck.app.core.model.RegionMoodAggregate
 import com.vibecheck.app.data.AppContainer
+import com.vibecheck.app.ui.components.HeatmapListSkeleton
 import com.vibecheck.app.ui.theme.ValenceHigh
 import com.vibecheck.app.ui.theme.ValenceLow
 import com.vibecheck.app.ui.theme.ValenceMid
@@ -86,6 +89,7 @@ private enum class ScopeChoice(val label: String, val coreScope: HeatmapScope, v
     GLOBAL("Global", HeatmapScope.GLOBAL, null),
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HeatmapScreen(container: AppContainer) {
     val context = LocalContext.current
@@ -98,6 +102,8 @@ fun HeatmapScreen(container: AppContainer) {
     var loading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val cache = remember { mutableStateMapOf<ScopeChoice, List<RegionMoodAggregate>>() }
+    var refreshTrigger by remember { mutableIntStateOf(0) }
+    var refreshing by remember { mutableStateOf(false) }
 
     // Resolve default country on first load.
     LaunchedEffect(Unit) {
@@ -120,22 +126,23 @@ fun HeatmapScreen(container: AppContainer) {
         }
     }
 
-    LaunchedEffect(scope) {
+    LaunchedEffect(scope, refreshTrigger) {
         if (scope == ScopeChoice.LOCAL) {
             val granted = ContextCompat.checkSelfPermission(
                 context, Manifest.permission.ACCESS_COARSE_LOCATION,
             ) == PackageManager.PERMISSION_GRANTED
             if (!granted) {
                 locationLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+                refreshing = false
                 return@LaunchedEffect
             }
         }
         val cached = cache[scope]
-        if (cached != null) {
+        if (cached != null && !refreshing) {
             aggregates = cached
             return@LaunchedEffect
         }
-        loading = true
+        if (aggregates == null) loading = true
         errorMessage = null
         container.heatmapRepository.aggregates(scope.coreScope).fold(
             onSuccess = { result ->
@@ -148,6 +155,7 @@ fun HeatmapScreen(container: AppContainer) {
             onFailure = { errorMessage = it.message ?: "Couldn't load the heatmap." },
         )
         loading = false
+        refreshing = false
     }
 
     val cameraPositionState = rememberCameraPositionState {
@@ -215,12 +223,17 @@ fun HeatmapScreen(container: AppContainer) {
             }
             Spacer(Modifier.height(8.dp))
 
-            Box(Modifier.fillMaxSize()) {
+            PullToRefreshBox(
+                isRefreshing = refreshing,
+                onRefresh = {
+                    refreshing = true
+                    cache.remove(scope)
+                    refreshTrigger++
+                },
+                modifier = Modifier.fillMaxSize(),
+            ) {
                 when {
-                    loading && aggregates == null ->
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator()
-                        }
+                    loading && aggregates == null -> HeatmapListSkeleton()
                     errorMessage != null && aggregates == null ->
                         Column(
                             Modifier.fillMaxSize(),
@@ -228,17 +241,29 @@ fun HeatmapScreen(container: AppContainer) {
                             verticalArrangement = Arrangement.Center,
                         ) {
                             Text(errorMessage!!)
-                            TextButton(onClick = { cache.remove(scope); scope = scope }) {
+                            TextButton(onClick = { cache.remove(scope); refreshTrigger++ }) {
                                 Text("Retry")
                             }
                         }
                     else -> {
                         val data = aggregates.orEmpty()
                         if (data.isEmpty()) {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Column(
+                                Modifier.fillMaxSize(),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center,
+                            ) {
+                                Text("🌍", fontSize = 40.sp)
+                                Spacer(Modifier.height(12.dp))
                                 Text(
-                                    "No check-ins here yet — be the first.",
+                                    "No check-ins here yet",
+                                    style = MaterialTheme.typography.titleSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(
+                                    "Pull down to refresh",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.outline,
                                 )
                             }
                         } else if (viewMode == ViewMode.MAP) {

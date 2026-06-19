@@ -50,6 +50,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -73,6 +74,10 @@ fun SettingsScreen(
     val profile = (profileState as? ProfileState.Ready)?.profile
     val isSubscribed by container.billingRepository.isSubscribed
         .collectAsStateWithLifecycle(initialValue = false)
+    val darkModePref by container.profileRepository.darkMode
+        .collectAsStateWithLifecycle(initialValue = null)
+    val systemDark = isSystemInDarkTheme()
+    val isDark = darkModePref ?: systemDark
     val price by container.billingRepository.monthlyPriceFormatted
         .collectAsStateWithLifecycle(initialValue = "$3.99 / £3.99")
     val todayCheckIn by container.moodRepository.todayCheckIn
@@ -189,7 +194,7 @@ fun SettingsScreen(
                     }
                 }
 
-                androidx.compose.material3.Divider()
+                androidx.compose.material3.HorizontalDivider()
                 Spacer(Modifier.height(12.dp))
 
                 // Latest vibe
@@ -226,7 +231,7 @@ fun SettingsScreen(
                         }
                     }
                     Spacer(Modifier.height(12.dp))
-                    androidx.compose.material3.Divider()
+                    androidx.compose.material3.HorizontalDivider()
                     Spacer(Modifier.height(12.dp))
                 }
 
@@ -251,6 +256,17 @@ fun SettingsScreen(
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text("Save username") }
+            }
+
+            // Appearance
+            SettingsSection(title = "Appearance") {
+                ToggleRow(
+                    label = "Dark mode",
+                    sub = if (darkModePref == null) "Following system setting"
+                          else if (isDark) "Dark" else "Light",
+                    checked = isDark,
+                    onCheckedChange = { scope.launch { container.profileRepository.setDarkMode(it) } },
+                )
             }
 
             // Notifications

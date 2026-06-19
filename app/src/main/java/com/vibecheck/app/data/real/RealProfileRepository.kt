@@ -33,6 +33,10 @@ class RealProfileRepository(
 
     override val proTrialDaysRemaining: Flow<Long> = prefs.proTrialDaysRemaining
 
+    override val darkMode: Flow<Boolean?> = prefs.darkMode
+
+    override suspend fun setDarkMode(enabled: Boolean) = prefs.setDarkMode(enabled)
+
     override suspend fun completeOnboarding(
         ageBracket: AgeBracket,
         username: String?,

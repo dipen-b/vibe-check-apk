@@ -27,6 +27,10 @@ interface ProfileRepository {
     val currentStreak: Flow<Long>
     val proTrialDaysRemaining: Flow<Long>
 
+    // UI preferences
+    val darkMode: Flow<Boolean?>
+    suspend fun setDarkMode(enabled: Boolean)
+
     /** Rejects [AgeBracket.UNDER_16]. [username] is optional and non-identifying. */
     suspend fun completeOnboarding(ageBracket: AgeBracket, username: String?): Result<UserProfile>
 

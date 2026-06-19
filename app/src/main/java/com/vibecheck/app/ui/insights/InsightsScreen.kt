@@ -20,7 +20,7 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -28,9 +28,11 @@ import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -50,28 +52,33 @@ import androidx.compose.ui.unit.sp
 import com.vibecheck.app.core.model.MoodTrendPoint
 import com.vibecheck.app.core.model.WeeklyInsights
 import com.vibecheck.app.data.AppContainer
+import com.vibecheck.app.ui.components.InsightsSkeleton
 import com.vibecheck.app.ui.theme.ValenceHigh
 import com.vibecheck.app.ui.theme.ValenceLow
 import com.vibecheck.app.ui.theme.ValenceMid
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InsightsScreen(container: AppContainer, onUpgrade: () -> Unit) {
     var insights by remember { mutableStateOf<WeeklyInsights?>(null) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var exporting by remember { mutableStateOf(false) }
+    var refreshTrigger by remember { mutableIntStateOf(0) }
+    var refreshing by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(refreshTrigger) {
         container.insightsRepository.weeklyInsights().fold(
             onSuccess = { insights = it },
             onFailure = { error = it.message },
         )
         loading = false
+        refreshing = false
     }
 
     // Builds the CSV via the repository (premium-gated there) and hands it to the
@@ -104,28 +111,38 @@ fun InsightsScreen(container: AppContainer, onUpgrade: () -> Unit) {
         snackbarHost = { SnackbarHost(snackbar, snackbar = { Snackbar(it) }) },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { padding ->
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 28.dp),
+        PullToRefreshBox(
+            isRefreshing = refreshing,
+            onRefresh = { refreshing = true; loading = insights == null; refreshTrigger++ },
+            modifier = Modifier.fillMaxSize().padding(padding),
         ) {
-            Text("Your Insights", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "This week at a glance.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(20.dp))
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp, vertical = 28.dp),
+            ) {
+                Text("Your Insights", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "This week at a glance.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(20.dp))
 
-            when {
-                loading -> Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                when {
+                    loading -> InsightsSkeleton()
+                    error != null -> Column(
+                        Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text("⚠️", fontSize = 36.sp)
+                        Spacer(Modifier.height(8.dp))
+                        Text(error!!, color = MaterialTheme.colorScheme.error)
+                    }
+                    insights != null -> InsightsContent(insights!!, onUpgrade, onExportCsv, exporting)
                 }
-                error != null -> Text(error!!, color = MaterialTheme.colorScheme.error)
-                insights != null -> InsightsContent(insights!!, onUpgrade, onExportCsv, exporting)
             }
         }
     }

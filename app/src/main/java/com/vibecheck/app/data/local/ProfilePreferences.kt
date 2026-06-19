@@ -35,6 +35,9 @@ class ProfilePreferences(private val context: Context) {
         val PRO_TRIAL_DAYS_REMAINING = longPreferencesKey("pro_trial_days_remaining")
         val IS_PRO_SUBSCRIBER = booleanPreferencesKey("is_pro_subscriber")
         val STREAK_SHIELDS_USED = longPreferencesKey("streak_shields_used")
+        // UI
+        val DARK_MODE = booleanPreferencesKey("dark_mode")
+        val CHECK_IN_COUNT_FOR_REVIEW = longPreferencesKey("checkin_count_review")
         // Analytics
         val TOTAL_CHECKINS = longPreferencesKey("total_checkins")
         val TOTAL_MATCHES = longPreferencesKey("total_matches")
@@ -86,6 +89,18 @@ class ProfilePreferences(private val context: Context) {
         prefs[Keys.STREAK_SHIELDS_USED] ?: 0L
     }
 
+    val darkMode: Flow<Boolean?> = context.profileDataStore.data.map { prefs ->
+        prefs[Keys.DARK_MODE]
+    }
+
+    val checkInCountForReview: Flow<Long> = context.profileDataStore.data.map { prefs ->
+        prefs[Keys.CHECK_IN_COUNT_FOR_REVIEW] ?: 0L
+    }
+
+    suspend fun setDarkMode(enabled: Boolean) {
+        context.profileDataStore.edit { prefs -> prefs[Keys.DARK_MODE] = enabled }
+    }
+
     // Analytics
     val totalCheckins: Flow<Long> = context.profileDataStore.data.map { prefs ->
         prefs[Keys.TOTAL_CHECKINS] ?: 0L
@@ -135,6 +150,7 @@ class ProfilePreferences(private val context: Context) {
             prefs[Keys.LONGEST_STREAK] = maxOf(newStreak, longestStreak)
             prefs[Keys.LAST_CHECKIN_DATE] = today
             prefs[Keys.TOTAL_CHECKINS] = (prefs[Keys.TOTAL_CHECKINS] ?: 0L) + 1
+            prefs[Keys.CHECK_IN_COUNT_FOR_REVIEW] = (prefs[Keys.CHECK_IN_COUNT_FOR_REVIEW] ?: 0L) + 1
             if (prefs[Keys.FIRST_CHECKIN_AT] == null) {
                 prefs[Keys.FIRST_CHECKIN_AT] = System.currentTimeMillis()
             }

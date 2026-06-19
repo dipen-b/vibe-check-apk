@@ -36,18 +36,21 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vibecheck.app.data.AppContainer
 import com.vibecheck.app.ui.chat.MatchScreen
 import com.vibecheck.app.ui.checkin.CheckInScreen
+import com.vibecheck.app.ui.components.ConfettiEffect
 import com.vibecheck.app.ui.heatmap.HeatmapScreen
 import com.vibecheck.app.ui.insights.InsightsScreen
 import com.vibecheck.app.ui.settings.SettingsScreen
@@ -75,35 +78,57 @@ fun HomeScaffold(
     val trialDaysRemaining by container.profileRepository.proTrialDaysRemaining
         .collectAsStateWithLifecycle(initialValue = 0L)
 
+    val greeting = remember {
+        val hour = java.time.LocalTime.now().hour
+        when {
+            hour < 12 -> "Good morning"
+            hour < 17 -> "Good afternoon"
+            else -> "Good evening"
+        }
+    }
+
+    // Show confetti once when hitting 7 or 30 day streak milestone
+    var lastConfettiStreak by rememberSaveable { mutableStateOf(0L) }
+    val showConfetti = currentStreak > 0 &&
+        (currentStreak == 7L || currentStreak == 30L) &&
+        lastConfettiStreak != currentStreak
+
     Scaffold(
         topBar = {
-            if (currentStreak > 0 || trialDaysRemaining > 0) {
-                Column(
-                    Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 10.dp)
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+            ) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    Text(
+                        greeting,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
                     Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         if (currentStreak > 0) {
                             Text(
-                                "🔥 $currentStreak-day",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                "🔥 $currentStreak",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface,
                             )
                         }
                         if (trialDaysRemaining > 0) {
                             Text(
-                                "💜 Trial: ${trialDaysRemaining}d",
+                                "💜 ${trialDaysRemaining}d trial",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary,
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                                fontWeight = FontWeight.SemiBold,
                             )
                         }
                     }
@@ -140,6 +165,7 @@ fun HomeScaffold(
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             AnimatedContent(
+
                 targetState = selectedTab,
                 transitionSpec = {
                     val forward = targetState.ordinal > initialState.ordinal
@@ -162,6 +188,15 @@ fun HomeScaffold(
                         onOpenTerms = onOpenTerms,
                     )
                 }
+            }
+
+            // Confetti burst on streak milestone
+            if (showConfetti) {
+                ConfettiEffect(
+                    trigger = true,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                lastConfettiStreak = currentStreak
             }
         }
     }

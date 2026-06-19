@@ -4,6 +4,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vibecheck.app.ui.navigation.AppNavHost
 import com.vibecheck.app.ui.theme.VibeCheckTheme
 
@@ -13,7 +16,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         val container = (application as VibeCheckApp).container
         setContent {
-            VibeCheckTheme {
+            val darkModePref by container.profileRepository.darkMode
+                .collectAsStateWithLifecycle(initialValue = null)
+            val systemDark = isSystemInDarkTheme()
+            val useDark = darkModePref ?: systemDark
+            VibeCheckTheme(darkTheme = useDark) {
                 AppNavHost(container)
             }
         }

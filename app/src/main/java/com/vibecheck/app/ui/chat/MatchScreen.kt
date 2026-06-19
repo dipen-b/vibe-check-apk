@@ -50,6 +50,8 @@ import com.vibecheck.app.core.model.MatchState
 import com.vibecheck.app.core.model.Mood
 import com.vibecheck.app.core.model.ProfileState
 import com.vibecheck.app.data.AppContainer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import com.vibecheck.app.ui.components.pressBounce
 import com.vibecheck.app.ui.theme.Violet
 import kotlinx.coroutines.flow.launchIn
@@ -69,6 +71,7 @@ fun MatchScreen(container: AppContainer, onChatStarted: (String) -> Unit, onOpen
     val isSubscribed by container.billingRepository.isSubscribed
         .collectAsStateWithLifecycle(initialValue = false)
 
+    val haptic = LocalHapticFeedback.current
     var matching by remember { mutableStateOf(false) }
     var matchState by remember { mutableStateOf<MatchState>(MatchState.Idle) }
     var chatOptIn by remember(profile) { mutableStateOf(profile?.chatOptIn ?: false) }
@@ -92,6 +95,7 @@ fun MatchScreen(container: AppContainer, onChatStarted: (String) -> Unit, onOpen
     // Load opening suggestions when a match is found
     LaunchedEffect(matchState) {
         if (matchState is MatchState.Matched) {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             scope.launch {
                 try {
                     val sessionId = (matchState as MatchState.Matched).sessionId
