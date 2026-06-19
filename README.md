@@ -1,17 +1,14 @@
 # VibeCheck 💜
 
-**An AI-powered social mood tracker for the US & UK.** Log how you feel in one
-tap a day, see how your city/country is feeling on an anonymous heatmap, get a
-~2‑minute "micro‑action" for your mood, and — if you opt in — have a 5‑minute
-anonymous chat with someone on your wavelength.
+**An AI-powered social mood tracker for the US & UK.** Log how you feel in one tap a day, connect with friends via phone-verified accounts, share anonymous mood vibes on The Resonance Feed, complete daily mood quests in The Gauntlet arcade, and get a ~2‑minute "micro‑action" for your mood.
 
-Privacy-first by design: **no email, no phone, no real name, no precise
-location.** Built for the UK Online Safety Act + US COPPA.
+Privacy-first by design: **Phone-based authentication, friend search, and optional profile creation.** Built with Jetpack Compose, Firebase, and Firestore.
 
-> Status: **feature-complete on demo data.** Debug builds run on an in-memory
-> fake data layer; the real Room + Firebase stack ships in release builds.
-> Outstanding before a real launch: a real Firebase project, a Google Maps API
-> key, and server-trusted purchase validation — see [Roadmap](#roadmap).
+> Status: **Phase 2 Feature-Complete.** 
+> - ✅ Phase 1: Resonance Feed (TikTok-style mood snippets, 1-5 words, image upload)
+> - ✅ Phase 2: Gauntlet Quests (3 daily interactive quests, streaks, leaderboard)
+> - ✅ Friendship Module (OTP verification, phone-based friend search, bidirectional requests)
+> - ✅ Enhanced Onboarding (6-step flow with phone verification integrated)
 
 ---
 
@@ -20,22 +17,27 @@ location.** Built for the UK Online Safety Act + US COPPA.
 | Area | What it does |
 |---|---|
 | **Daily check-in** | 6 moods (😊 😐 😔 😡 😴 🥳) + optional ≤5-word note; streak + 7-day strip |
+| **The Resonance Feed** | Anonymous vertical infinite-scroll mood snippets (1-5 words), 🔥 Resonate voting, gallery image upload with auto-resize |
+| **The Gauntlet** | 3 daily interactive quests (Gratitude Typing, Tap Game, Voice Record, Reflection, Movement, Breathing), 🔥 streak tracking, 💎 Vibe Gems currency, global leaderboard |
+| **Friendship Module** | Phone-verified accounts, friend search by name/phone, bidirectional friend requests, protected phone numbers, friend list with avatars |
 | **Micro-actions** | Rule-based ~2-min activity suggested for your mood, with a countdown timer |
-| **Heatmap** | Aggregated, anonymous city-level mood — Local / 🇺🇸 US / 🇬🇧 UK / Global, list + map |
-| **Anonymous match + chat** | Opt-in, mood-matched, 5-min ephemeral chat; profanity filter + report; auto-deleted |
 | **Insights** | Weekly trend + best/toughest day; CSV export (premium) |
 | **VibeCheck Plus** | $29.00 / £29.00 monthly subscription via Google Play Billing 7 |
 
-UK/US localisation throughout (e.g. "Knackered"/"Buzzing", dual currency, both
-crisis helplines — 988 and 116 123).
+**Authentication & Privacy:**
+- OTP-based phone verification integrated into onboarding
+- User profiles auto-created with First Name, Last Name, Avatar
+- Friend phone numbers protected (search enabled, display disabled)
+- 100-character limit on posts with prominent word count
+- Location auto-detection on feed entry (region-based, no PII)
 
 ## Tech stack
 
 - **Kotlin 2.1**, **Jetpack Compose** (Material 3), min SDK 26 / target 35
-- **Room** + **DataStore** (local) · **Firebase** Anonymous Auth + Firestore + Functions (remote)
-- **Google Maps** Compose · **Play Billing 7** · **WorkManager** (daily reminder)
-- **Cloud Functions** (Node 20) for heatmap rollups, matchmaking, and retention
+- **Room** + **DataStore** (local) · **Firebase** (Phone Auth, Firestore) + **Firebase Storage** (images)
+- **Coil** for async image loading · **Google Play Billing 7** · **WorkManager** (daily reminder)
 - No DI framework — a hand-rolled `AppContainer` is the composition root
+- Repository pattern with interface + Real (Firebase) / Fake (in-memory) implementations
 
 ## Quick start
 
@@ -43,32 +45,22 @@ crisis helplines — 988 and 116 123).
 git clone https://github.com/dipen-b/vibe-check-apk.git
 cd vibe-check-apk
 
-# 1. Point the SDK + (placeholder) Maps key — see local.properties
-#    sdk.dir=/path/to/Android/sdk
-#    MAPS_API_KEY=YOUR_KEY   (a placeholder works; map tiles stay blank)
-
-# 2. Build & install the debug app (runs on demo data — no Firebase needed)
+# 1. Build & install the debug app (runs on demo data — no Firebase needed)
 ./gradlew :app:installDebug
 
-# 3. Run the test suites
+# 2. Run the test suites (coming soon)
 ./gradlew :app:testDebugUnitTest        # Kotlin unit tests
-cd backend/functions && npm install && npm test   # Cloud Function logic tests
 ```
 
-Debug builds default to the **in-memory demo data layer** (`USE_FAKE_DATA=true`),
-so you can run the whole app with **no backend**. To exercise the real stack,
-build release or pass `-PuseFakeData=false` and run the Firebase emulator
-(see [docs/SETUP.md](docs/SETUP.md)).
+Debug builds default to the **in-memory demo data layer** (`USE_FAKE_DATA=true`), so you can run the whole app with **no backend**. To exercise the real stack with Firebase, update `DefaultAppContainer.kt` to point to your Firebase project.
 
 ## Architecture at a glance
 
-Every screen depends only on **interfaces** (`data/Repositories.kt`), handed to
-it by an `AppContainer`. Debug swaps in fakes; release wires the real stack.
-That single seam is why the whole app runs with no backend.
+Every screen depends only on **interfaces** (`data/Repositories.kt`), handed to it by an `AppContainer`. Debug swaps in fakes; release wires the real stack. That single seam is why the whole app runs with no backend.
 
 ```mermaid
 flowchart TD
-    UI["UI screens (Compose)\nsplash · check-in · heatmap · match/chat · insights · settings"]
+    UI["UI screens (Compose)\nsplash · onboarding · check-in · feed · gauntlet · match/chat · friendship · insights · settings"]
     AC{{"AppContainer\n(interfaces only)"}}
     UI -->|reads/writes via| AC
 
@@ -78,92 +70,135 @@ flowchart TD
     REAL --> ROOM[("Room\nvibecheck.db")]
     REAL --> DS[("DataStore\nprofile")]
     REAL --> FS[("Firestore")]
-    REAL --> AUTH["Firebase\nAnonymous Auth"]
-    REAL --> FN["Cloud Functions"]
+    REAL --> AUTH["Firebase\nPhone Auth"]
+    REAL --> STORAGE["Firebase Storage\n(avatars, feed images)"]
 
-    FN --> FS
-    subgraph Backend["backend/functions (Node 20)"]
-        FN1["rollupRegions\n(heatmap)"]
-        FN2["requestMatch /\nchat lifecycle"]
-        FN3["cleanupInactiveData\n(90-day retention)"]
-    end
-    FN --- FN1 & FN2 & FN3
+    FAKE --> FAKEFS["In-Memory\nData Maps"]
 ```
 
-**Check-in data flow (privacy-preserving):**
+**Data flow (sample: Resonance Feed post):**
 
 ```mermaid
 sequenceDiagram
     actor U as User
-    participant CI as CheckInScreen
-    participant MR as MoodRepository
-    participant Room
+    participant Feed as ResonanceFeedScreen
+    participant Repo as ResonanceRepository
     participant FS as Firestore
-    participant CF as rollupRegions
-    U->>CI: pick mood + optional note
-    CI->>MR: submitCheckIn(mood, note)
-    MR->>Room: store full check-in (on-device history)
-    MR->>FS: anonymous doc {regionId, mood, valence, ts}\nid = SHA-256(ts + salt), NO uid
-    FS->>CF: trigger
-    CF->>FS: increment region count24h / valenceSum24h
-    Note over FS,CF: Heatmap reads only the aggregated regions —\nnever individual check-ins
+    participant Storage as Firebase Storage
+    U->>Feed: enter mood + text (1-5 words) + optional image
+    Feed->>Repo: submitPost(mood, text, imageUri)
+    Repo->>Storage: upload & resize image to 500x500 (JPEG 85%)
+    Repo->>FS: create ResonancePost doc {mood, text, imageUrl, regionId, timestamp}
+    FS->>Feed: stream updated posts
+    Feed->>U: display in infinite scroll with Resonate button
 ```
 
 ## Project structure
 
 ```
 app/src/main/java/com/vibecheck/app/
-  core/            AppConfig, Cities (region buckets), models, reminder
+  core/
+    model/           Mood, User, Quest, ResonancePost, FriendRequest
+    AppConfig, Cities, reminder
   data/
-    Repositories.kt      interfaces every screen depends on
-    AppContainer.kt      composition root interface
-    DefaultAppContainer  real wiring (Room + Firebase)
-    fake/                in-memory demo layer (default in debug)
-    local/               Room DB + DataStore
-    real/                Firebase-backed repositories
-    firebase/            FirebaseProvider (emulator-aware)
-  domain/chat/     ProfanityFilter
-  ui/              splash, onboarding, checkin, actions, heatmap,
-                   chat (match+chat), insights, settings, subscription,
-                   home (nav scaffold), navigation, theme, components
-backend/functions/  Cloud Functions (rollup, matchmaking, retention) + tests
-firestore.rules     deny-by-default security rules
-CONTRACTS.md        architecture contract — READ THIS before coding
+    Repositories.kt          interfaces (Mood, Heatmap, Chat, Quest, Resonance, Friendship, Billing)
+    AppContainer.kt          composition root interface
+    DefaultAppContainer      real wiring (Room + Firebase + FirebaseStorage)
+    FakeAppContainer         in-memory demo layer (default in debug)
+    fake/                    FakeMoodRepository, FakeChatRepository, FakeQuestRepository, etc.
+    real/                    Real*.kt (Firebase-backed implementations)
+    firebase/                FirebaseProvider (emulator-aware)
+    local/                   Room DB + DataStore
+  domain/chat/       ProfanityFilter
+  ui/
+    splash/          SplashScreen
+    onboarding/      OnboardingScreen (6 steps: Welcome → Phone → OTP → Profile → Age → Finish)
+    checkin/         CheckInScreen
+    feed/            ResonanceFeedScreen (infinite scroll mood feed with images)
+    gauntlet/        GauntletScreen (3 quests, leaderboard, streaks)
+    friendship/      FriendshipScreen, FriendsListScreen (phone auth, search, requests)
+    chat/            MatchScreen, ChatScreen
+    insights/        InsightsScreen
+    settings/        SettingsScreen
+    home/            HomeScaffold (navigation: Check-in, Feed, Friends, Gauntlet, Settings)
+    theme/           Color, Typography, Theme
+    components/      Reusable composables
+backend/functions/   (planned) Cloud Functions for aggregation, matchmaking, cleanup
+firestore.rules      (placeholder) Security rules
+CONTRACTS.md         architecture contract
 ```
 
-## Cloud Functions
+## Data models
 
-| Function | Trigger | Purpose |
-|---|---|---|
-| `onCheckinCreated` | checkin create | live region count/valence increment |
-| `rollupRegions` | hourly | authoritative 24h heatmap recompute |
-| `cleanupInactiveData` | daily | 90-day retention (users + old check-ins) |
-| `requestMatch` / `cancelMatch` | callable | mood-matched matchmaking |
-| `leaveSession` / `reportPeer` | callable | end / report a chat (participant-only) |
-| `closeExpiredSessions` | every 2 min | close expired chats + purge messages |
+**User** (Friendship Module):
+```kotlin
+data class User(
+    val userId: String,
+    val firstName: String,
+    val lastName: String,
+    val phoneNumber: String,      // protected, not displayed
+    val countryCode: String,
+    val avatarUrl: String,
+    val createdAtMillis: Long
+)
+```
 
-## Privacy invariants (do not break)
+**ResonancePost** (Feed):
+```kotlin
+data class ResonancePost(
+    val id: String,
+    val mood: Mood,
+    val text: String,             // 1-5 words, ≤100 chars
+    val regionId: String,
+    val createdAtMillis: Long,
+    val resonateCount: Int,
+    val authorId: String,
+    val imageUrl: String?         // optional gallery image, 500x500
+)
+```
 
-- No PII anywhere — no email, phone, or real name.
-- No precise coordinates; only coarse `regionId` buckets leave the device.
-- Mood check-ins are anonymous **even to admins**: the Firestore doc id is a
-  `SHA-256(timestamp + random salt)` and carries no uid.
-- No device identifiers / no IP logging. Notes are capped at 5 words.
-- All data deleted after 90 days of inactivity.
+**Quest** (Gauntlet):
+```kotlin
+data class Quest(
+    val id: String,
+    val questNumber: Int,         // 1-3
+    val mood: Mood,
+    val title: String,
+    val description: String,
+    val questType: QuestType,     // GRATITUDE_TYPING, TAP_GAME, etc.
+    val isCompleted: Boolean
+)
+```
+
+## Onboarding Flow (6 Steps)
+
+1. **Welcome** — Intro screen
+2. **Phone Input** — Enter phone number, send OTP
+3. **OTP Verification** — Enter 6-digit code from SMS
+4. **Profile Creation** — First Name, Last Name (auto-creates user profile)
+5. **Age Verification** — Age bracket selection
+6. **Finish** — Optional username, reminder opt-in
+
+After completion, user is logged in and can access all tabs.
 
 ## Roadmap
 
 The full path to a Play Store release is tracked in **[docs/LAUNCH.md](docs/LAUNCH.md)**.
-The headline remaining items (all infrastructure/compliance, not app code):
 
-- [ ] Real Firebase project (currently the `demo-vibecheck` emulator placeholder)
-- [ ] Real Google Maps API key (map tiles are blank with the placeholder)
-- [x] Server-trusted entitlement via the `validatePurchase` callable
-- [ ] Play Console listing + subscription product, Privacy Policy, signed AAB
-- [ ] Broader test coverage + end-to-end verification on the real stack
+Current priorities:
+- [ ] Real Firebase project configuration
+- [ ] Image optimization & caching for Feed
+- [ ] Quest mini-games implementation (Tap, Voice, etc.)
+- [ ] Leaderboard backend aggregation
+- [ ] End-to-end test coverage
+- [ ] Play Console listing + subscription product
+- [ ] Privacy Policy, Terms of Service
+- [ ] Signed AAB for Play Store
 
 ## Contributing
 
-New here? Start with **[CONTRIBUTING.md](CONTRIBUTING.md)** for the workflow and
-**[CONTRACTS.md](CONTRACTS.md)** for the architecture rules. Detailed backend /
-Firebase / Maps setup lives in **[docs/SETUP.md](docs/SETUP.md)**.
+New here? Start with **[CONTRIBUTING.md](CONTRIBUTING.md)** for the workflow and **[CONTRACTS.md](CONTRACTS.md)** for the architecture rules.
+
+---
+
+**Built with ❤️ by the VibeCheck team**
