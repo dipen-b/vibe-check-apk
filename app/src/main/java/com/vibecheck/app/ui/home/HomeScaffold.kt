@@ -66,6 +66,8 @@ fun HomeScaffold(
     onCheckedIn: (com.vibecheck.app.core.model.Mood) -> Unit,
     onChatStarted: (String) -> Unit,
     onOpenSubscription: () -> Unit,
+    onOpenPrivacy: () -> Unit = {},
+    onOpenTerms: () -> Unit = {},
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(HomeTab.CHECK_IN) }
     val currentStreak by container.profileRepository.currentStreak
@@ -153,7 +155,12 @@ fun HomeScaffold(
                     HomeTab.HEATMAP -> HeatmapScreen(container)
                     HomeTab.MATCH -> MatchScreen(container, onChatStarted, onOpenSubscription)
                     HomeTab.INSIGHTS -> InsightsScreen(container, onUpgrade = onOpenSubscription)
-                    HomeTab.SETTINGS -> SettingsScreen(container, onOpenSubscription = onOpenSubscription)
+                    HomeTab.SETTINGS -> SettingsScreen(
+                        container,
+                        onOpenSubscription = onOpenSubscription,
+                        onOpenPrivacy = onOpenPrivacy,
+                        onOpenTerms = onOpenTerms,
+                    )
                 }
             }
         }

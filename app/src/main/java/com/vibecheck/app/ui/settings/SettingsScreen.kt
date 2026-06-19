@@ -6,6 +6,7 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,8 +21,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -58,7 +62,12 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @Composable
-fun SettingsScreen(container: AppContainer, onOpenSubscription: () -> Unit) {
+fun SettingsScreen(
+    container: AppContainer,
+    onOpenSubscription: () -> Unit,
+    onOpenPrivacy: () -> Unit = {},
+    onOpenTerms: () -> Unit = {},
+) {
     val profileState by container.profileRepository.profileState
         .collectAsStateWithLifecycle(initialValue = ProfileState.Loading)
     val profile = (profileState as? ProfileState.Ready)?.profile
@@ -325,6 +334,15 @@ fun SettingsScreen(container: AppContainer, onOpenSubscription: () -> Unit) {
                 }
             }
 
+            // Legal
+            SettingsSection(title = "Legal") {
+                LegalRow(label = "Privacy Policy", onClick = onOpenPrivacy)
+                Spacer(Modifier.height(4.dp))
+                androidx.compose.material3.HorizontalDivider()
+                Spacer(Modifier.height(4.dp))
+                LegalRow(label = "Terms of Service", onClick = onOpenTerms)
+            }
+
             // Version
             Text(
                 "VibeCheck v${BuildConfig.VERSION_NAME} · Not a medical device · 16+",
@@ -380,6 +398,25 @@ private fun ToggleRow(label: String, sub: String, checked: Boolean, onCheckedCha
             Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+@Composable
+private fun LegalRow(label: String, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+        Icon(
+            Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

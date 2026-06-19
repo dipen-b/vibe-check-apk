@@ -21,6 +21,8 @@ import com.vibecheck.app.core.model.ProfileState
 import com.vibecheck.app.data.AppContainer
 import com.vibecheck.app.ui.chat.ChatScreen
 import com.vibecheck.app.ui.home.HomeScaffold
+import com.vibecheck.app.ui.legal.PrivacyPolicyScreen
+import com.vibecheck.app.ui.legal.TermsScreen
 import com.vibecheck.app.ui.onboarding.OnboardingScreen
 import com.vibecheck.app.ui.actions.ActionsScreen
 import com.vibecheck.app.ui.splash.SplashScreen
@@ -92,6 +94,8 @@ fun AppNavHost(container: AppContainer) {
                 onCheckedIn = { mood -> navController.navigate(Routes.actions(mood)) },
                 onChatStarted = { sessionId -> navController.navigate(Routes.chat(sessionId)) },
                 onOpenSubscription = { navController.navigate(Routes.SUBSCRIPTION) },
+                onOpenPrivacy = { navController.navigate(Routes.PRIVACY) },
+                onOpenTerms = { navController.navigate(Routes.TERMS) },
             )
         }
         composable(
@@ -125,6 +129,24 @@ fun AppNavHost(container: AppContainer) {
             popExitTransition = { smoothPopExit() },
         ) {
             SubscriptionScreen(container) { navController.popBackStack() }
+        }
+        composable(
+            Routes.PRIVACY,
+            enterTransition = { smoothEnter() },
+            exitTransition = { smoothExit() },
+            popEnterTransition = { smoothPopEnter() },
+            popExitTransition = { smoothPopExit() },
+        ) {
+            PrivacyPolicyScreen { navController.popBackStack() }
+        }
+        composable(
+            Routes.TERMS,
+            enterTransition = { smoothEnter() },
+            exitTransition = { smoothExit() },
+            popEnterTransition = { smoothPopEnter() },
+            popExitTransition = { smoothPopExit() },
+        ) {
+            TermsScreen { navController.popBackStack() }
         }
     }
 }

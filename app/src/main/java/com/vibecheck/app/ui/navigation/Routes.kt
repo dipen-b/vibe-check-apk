@@ -9,6 +9,8 @@ object Routes {
     const val ACTIONS = "actions/{moodName}"
     const val CHAT = "chat/{sessionId}"
     const val SUBSCRIPTION = "subscription"
+    const val PRIVACY = "privacy"
+    const val TERMS = "terms"
 
     fun actions(mood: Mood) = "actions/${mood.name}"
     fun chat(sessionId: String) = "chat/$sessionId"
