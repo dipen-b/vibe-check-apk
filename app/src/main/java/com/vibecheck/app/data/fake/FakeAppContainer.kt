@@ -71,8 +71,11 @@ class FakeProfileRepository : ProfileRepository {
 
     override val currentStreak: Flow<Long> = MutableStateFlow(7L)
     override val proTrialDaysRemaining: Flow<Long> = MutableStateFlow(2L)
-    override val darkMode: Flow<Boolean?> = MutableStateFlow(null)
-    override suspend fun setDarkMode(enabled: Boolean) = Unit
+    // Backed by real state so the Settings toggle works in debug/fake builds too.
+    // In-memory only (resets on app restart) — the real repo persists via DataStore.
+    private val darkModeState = MutableStateFlow<Boolean?>(null)
+    override val darkMode: Flow<Boolean?> = darkModeState
+    override suspend fun setDarkMode(enabled: Boolean) { darkModeState.value = enabled }
 
     override suspend fun completeOnboarding(ageBracket: AgeBracket, username: String?): Result<UserProfile> {
         if (ageBracket == AgeBracket.UNDER_16) {

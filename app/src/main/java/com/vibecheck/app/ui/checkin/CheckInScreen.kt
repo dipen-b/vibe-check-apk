@@ -327,11 +327,13 @@ private fun AlreadyCheckedIn(checkIn: MoodCheckIn, history: List<MoodCheckIn>) {
         Spacer(Modifier.weight(1f))
         OutlinedButton(
             onClick = {
+                val playStoreUrl = "https://play.google.com/store/apps/details?id=${context.packageName}"
                 val shareText = "${checkIn.mood.emoji} Feeling ${checkIn.mood.localisedLabel.lowercase()} today" +
                     checkIn.note?.let { " — \"$it\"" }.orEmpty() +
-                    " 💜 #VibeCheck"
+                    " 💜\n\nTrack your daily vibe with VibeCheck:\n$playStoreUrl\n\n#VibeCheck"
                 val intent = Intent(Intent.ACTION_SEND).apply {
                     type = "text/plain"
+                    putExtra(Intent.EXTRA_SUBJECT, "My VibeCheck today")
                     putExtra(Intent.EXTRA_TEXT, shareText)
                 }
                 runCatching { context.startActivity(Intent.createChooser(intent, "Share my vibe")) }
