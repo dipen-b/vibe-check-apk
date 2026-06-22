@@ -1,6 +1,7 @@
 package com.vibecheck.app.data.real
 
 import android.app.Activity
+import android.app.Application
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.tasks.await
 import java.io.ByteArrayOutputStream
+import java.lang.ref.WeakReference
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
@@ -36,15 +38,28 @@ class RealFriendshipRepository(
 
     private val verificationIdState = MutableStateFlow<String?>(null)
     private val currentUserIdState = MutableStateFlow<String?>(null)
+    private var currentActivityRef: WeakReference<Activity>? = null
 
     init {
         currentUserIdState.value = auth.currentUser?.uid
     }
 
+    // Call this from MainActivity.onCreate() to provide the Activity
+    fun setCurrentActivity(activity: Activity) {
+        currentActivityRef = WeakReference(activity)
+    }
+
     override suspend fun sendOTP(phoneNumber: String, countryCode: String): Result<String> =
         runCatching {
             val fullPhoneNumber = "$countryCode$phoneNumber"
-            val activity = context as? Activity ?: throw IllegalStateException("Context is not an Activity")
+
+            // Try to get activity from WeakReference first, then from context
+            val activity = currentActivityRef?.get()
+                ?: (context as? Activity)
+                ?: throw IllegalStateException(
+                    "Activity required for phone authentication. " +
+                    "Make sure you're calling this from an Activity context."
+                )
 
             val verificationId = suspendCancellableCoroutine<String> { continuation ->
                 val callbacks = object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {

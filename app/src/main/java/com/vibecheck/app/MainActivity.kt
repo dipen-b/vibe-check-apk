@@ -15,6 +15,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val container = (application as VibeCheckApp).container
+
+        // Provide Activity to FriendshipRepository for phone auth
+        (container.friendshipRepository as? com.vibecheck.app.data.real.RealFriendshipRepository)?.setCurrentActivity(this)
+
         setContent {
             val darkModePref by container.profileRepository.darkMode
                 .collectAsStateWithLifecycle(initialValue = null)
