@@ -662,6 +662,8 @@ private fun PhoneInputStepOnboarding(
     onBack: () -> Unit,
     onContinue: () -> Unit,
 ) {
+    val isValidPhone = phoneNumber.length >= 10 && phoneNumber.all { it.isDigit() }
+
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.SpaceBetween,
@@ -683,11 +685,25 @@ private fun PhoneInputStepOnboarding(
 
             OutlinedTextField(
                 value = phoneNumber,
-                onValueChange = { onPhoneNumberChange(it.take(15)) },
+                onValueChange = { input ->
+                    val digits = input.filter { it.isDigit() }
+                    onPhoneNumberChange(digits.take(15))
+                },
                 label = { Text("Phone Number") },
                 placeholder = { Text("9876543210") },
                 modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                ),
+                supportingText = {
+                    Text(
+                        if (phoneNumber.isEmpty()) "Minimum 10 digits"
+                        else if (!isValidPhone) "Please enter at least 10 digits"
+                        else "✓ Valid",
+                        color = if (isValidPhone) androidx.compose.material3.MaterialTheme.colorScheme.primary
+                        else androidx.compose.material3.MaterialTheme.colorScheme.error,
+                    )
+                },
             )
         }
 
@@ -700,7 +716,7 @@ private fun PhoneInputStepOnboarding(
             }
             Button(
                 onClick = onContinue,
-                enabled = phoneNumber.isNotBlank() && !submitting,
+                enabled = isValidPhone && !submitting,
                 modifier = Modifier
                     .weight(1f)
                     .height(48.dp),
@@ -725,6 +741,8 @@ private fun OTPVerificationStepOnboarding(
     onBack: () -> Unit,
     onContinue: () -> Unit,
 ) {
+    val isValidOTP = otp.length == 6 && otp.all { it.isDigit() }
+
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.SpaceBetween,
@@ -746,11 +764,24 @@ private fun OTPVerificationStepOnboarding(
 
             OutlinedTextField(
                 value = otp,
-                onValueChange = { onOtpChange(it.take(6)) },
-                label = { Text("OTP") },
+                onValueChange = { input ->
+                    val digits = input.filter { it.isDigit() }
+                    onOtpChange(digits.take(6))
+                },
+                label = { Text("OTP Code") },
                 placeholder = { Text("000000") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                supportingText = {
+                    Text(
+                        if (otp.isEmpty()) "Enter 6-digit code"
+                        else if (!isValidOTP) "Please enter exactly 6 digits"
+                        else "✓ Valid OTP",
+                        color = if (isValidOTP) androidx.compose.material3.MaterialTheme.colorScheme.primary
+                        else if (otp.isNotEmpty()) androidx.compose.material3.MaterialTheme.colorScheme.error
+                        else androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
             )
         }
 
@@ -763,7 +794,7 @@ private fun OTPVerificationStepOnboarding(
             }
             Button(
                 onClick = onContinue,
-                enabled = otp.isNotBlank() && !submitting,
+                enabled = isValidOTP && !submitting,
                 modifier = Modifier
                     .weight(1f)
                     .height(48.dp),
@@ -790,6 +821,10 @@ private fun ProfileCreationStepOnboarding(
     onBack: () -> Unit,
     onContinue: () -> Unit,
 ) {
+    val isFirstNameValid = firstName.trim().isNotBlank()
+    val isLastNameValid = lastName.trim().isNotBlank()
+    val isFormValid = isFirstNameValid && isLastNameValid
+
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.SpaceBetween,
@@ -812,19 +847,41 @@ private fun ProfileCreationStepOnboarding(
             OutlinedTextField(
                 value = firstName,
                 onValueChange = { onFirstNameChange(it.take(20)) },
-                label = { Text("First Name") },
+                label = { Text("First Name *") },
                 placeholder = { Text("John") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+                isError = firstName.isNotEmpty() && !isFirstNameValid,
+                supportingText = {
+                    if (firstName.isNotEmpty() && !isFirstNameValid) {
+                        Text(
+                            "First name is required",
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.error,
+                        )
+                    } else if (isFirstNameValid) {
+                        Text("✓ Valid", color = androidx.compose.material3.MaterialTheme.colorScheme.primary)
+                    }
+                },
             )
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
                 value = lastName,
                 onValueChange = { onLastNameChange(it.take(20)) },
-                label = { Text("Last Name") },
+                label = { Text("Last Name *") },
                 placeholder = { Text("Doe") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+                isError = lastName.isNotEmpty() && !isLastNameValid,
+                supportingText = {
+                    if (lastName.isNotEmpty() && !isLastNameValid) {
+                        Text(
+                            "Last name is required",
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.error,
+                        )
+                    } else if (isLastNameValid) {
+                        Text("✓ Valid", color = androidx.compose.material3.MaterialTheme.colorScheme.primary)
+                    }
+                },
             )
         }
 
@@ -837,7 +894,7 @@ private fun ProfileCreationStepOnboarding(
             }
             Button(
                 onClick = onContinue,
-                enabled = firstName.isNotBlank() && lastName.isNotBlank() && !submitting,
+                enabled = isFormValid && !submitting,
                 modifier = Modifier
                     .weight(1f)
                     .height(48.dp),
