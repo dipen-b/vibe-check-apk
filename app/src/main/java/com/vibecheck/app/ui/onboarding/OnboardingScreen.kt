@@ -76,7 +76,7 @@ import com.vibecheck.app.ui.components.pressBounce
 import com.vibecheck.app.ui.theme.Violet
 import kotlinx.coroutines.launch
 
-private enum class OnboardingStep { WELCOME, PHONE_INPUT, OTP_VERIFICATION, PROFILE_CREATION, AGE, FINISH }
+private enum class OnboardingStep { WELCOME, AGE, FINISH, PHONE_INPUT, OTP_VERIFICATION, PROFILE_CREATION }
 
 @Composable
 fun OnboardingScreen(container: AppContainer, onComplete: () -> Unit) {
@@ -115,12 +115,27 @@ fun OnboardingScreen(container: AppContainer, onComplete: () -> Unit) {
                 modifier = Modifier.weight(1f),
             ) { current ->
                 when (current) {
-                    OnboardingStep.WELCOME -> WelcomeStep(onContinue = { step = OnboardingStep.PHONE_INPUT })
+                    OnboardingStep.WELCOME -> WelcomeStep(onContinue = { step = OnboardingStep.AGE })
+                    OnboardingStep.AGE -> AgeStep(
+                        selected = ageChoice,
+                        onSelect = { ageChoice = it },
+                        onBack = { step = OnboardingStep.WELCOME },
+                        onContinue = { step = OnboardingStep.FINISH },
+                    )
+                    OnboardingStep.FINISH -> FinishStep(
+                        username = username,
+                        onUsernameChange = { username = it.filter { ch -> ch.isLetterOrDigit() || ch == '_' }.take(20) },
+                        reminderOptIn = reminderOptIn,
+                        onReminderChange = { reminderOptIn = it },
+                        submitting = submitting,
+                        onBack = { step = OnboardingStep.AGE },
+                        onFinish = { step = OnboardingStep.PHONE_INPUT },
+                    )
                     OnboardingStep.PHONE_INPUT -> PhoneInputStepOnboarding(
                         phoneNumber = phoneNumber,
                         onPhoneNumberChange = { phoneNumber = it },
                         submitting = submitting,
-                        onBack = { step = OnboardingStep.WELCOME },
+                        onBack = { step = OnboardingStep.FINISH },
                         onContinue = {
                             if (phoneNumber.isBlank()) {
                                 coroutineScope.launch {
@@ -185,10 +200,20 @@ fun OnboardingScreen(container: AppContainer, onComplete: () -> Unit) {
                             }
                             submitting = true
                             coroutineScope.launch {
+                                val bracket = ageChoice ?: return@launch
                                 container.friendshipRepository.createUserProfile(userId, firstName, lastName)
                                     .onSuccess {
-                                        submitting = false
-                                        step = OnboardingStep.AGE
+                                        container.profileRepository.completeOnboarding(bracket, username.ifBlank { null })
+                                            .onSuccess {
+                                                if (reminderOptIn) {
+                                                    ReminderScheduler.enable(context)
+                                                }
+                                                onComplete()
+                                            }
+                                            .onFailure {
+                                                snackbarHostState.showSnackbar(it.message ?: "Error")
+                                                submitting = false
+                                            }
                                     }
                                     .onFailure {
                                         snackbarHostState.showSnackbar(it.message ?: "Failed to create profile")
@@ -196,37 +221,6 @@ fun OnboardingScreen(container: AppContainer, onComplete: () -> Unit) {
                                     }
                             }
                         }
-                    )
-                    OnboardingStep.AGE -> AgeStep(
-                        selected = ageChoice,
-                        onSelect = { ageChoice = it },
-                        onBack = { step = OnboardingStep.PROFILE_CREATION },
-                        onContinue = { step = OnboardingStep.FINISH },
-                    )
-                    OnboardingStep.FINISH -> FinishStep(
-                        username = username,
-                        onUsernameChange = { username = it.filter { ch -> ch.isLetterOrDigit() || ch == '_' }.take(20) },
-                        reminderOptIn = reminderOptIn,
-                        onReminderChange = { reminderOptIn = it },
-                        submitting = submitting,
-                        onBack = { step = OnboardingStep.AGE },
-                        onFinish = {
-                            val bracket = ageChoice ?: return@FinishStep
-                            submitting = true
-                            coroutineScope.launch {
-                                container.profileRepository.completeOnboarding(bracket, username.ifBlank { null })
-                                    .onSuccess {
-                                        if (reminderOptIn) {
-                                            ReminderScheduler.enable(context)
-                                        }
-                                        onComplete()
-                                    }
-                                    .onFailure {
-                                        snackbarHostState.showSnackbar(it.message ?: "Error")
-                                        submitting = false
-                                    }
-                            }
-                        },
                     )
                 }
             }
