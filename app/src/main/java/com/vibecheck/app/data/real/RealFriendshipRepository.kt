@@ -1,5 +1,6 @@
 package com.vibecheck.app.data.real
 
+import android.app.Activity
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -18,11 +19,13 @@ import com.vibecheck.app.data.FriendshipRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.tasks.await
-import java.io.IOException
 import java.io.ByteArrayOutputStream
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 class RealFriendshipRepository(
     private val context: Context,
@@ -41,31 +44,35 @@ class RealFriendshipRepository(
     override suspend fun sendOTP(phoneNumber: String, countryCode: String): Result<String> =
         runCatching {
             val fullPhoneNumber = "$countryCode$phoneNumber"
-            var verificationId = ""
-            var resultException: FirebaseException? = null
+            val activity = context as? Activity ?: throw IllegalStateException("Context is not an Activity")
 
-            val callbacks = object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
-                override fun onVerificationCompleted(credential: PhoneAuthCredential) {}
-                override fun onVerificationFailed(e: FirebaseException) {
-                    resultException = e
+            val verificationId = suspendCancellableCoroutine<String> { continuation ->
+                val callbacks = object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
+                    override fun onVerificationCompleted(credential: PhoneAuthCredential) {
+                        // Auto-verification on some devices (e.g., Google Play services)
+                        // We'll let this be handled by the OTP step
+                    }
+
+                    override fun onVerificationFailed(e: FirebaseException) {
+                        continuation.resumeWithException(e)
+                    }
+
+                    override fun onCodeSent(
+                        id: String,
+                        token: PhoneAuthProvider.ForceResendingToken,
+                    ) {
+                        continuation.resume(id)
+                    }
                 }
-                override fun onCodeSent(id: String, token: PhoneAuthProvider.ForceResendingToken) {
-                    verificationId = id
-                }
-            }
 
-            val options = PhoneAuthOptions.newBuilder(auth)
-                .setPhoneNumber(fullPhoneNumber)
-                .setTimeout(60L, TimeUnit.SECONDS)
-                .setActivity(context as android.app.Activity)
-                .setCallbacks(callbacks)
-                .build()
+                val options = PhoneAuthOptions.newBuilder(auth)
+                    .setPhoneNumber(fullPhoneNumber)
+                    .setTimeout(60L, TimeUnit.SECONDS)
+                    .setActivity(activity)
+                    .setCallbacks(callbacks)
+                    .build()
 
-            PhoneAuthProvider.verifyPhoneNumber(options)
-            Thread.sleep(1000)
-
-            if (resultException != null) {
-                throw resultException!!
+                PhoneAuthProvider.verifyPhoneNumber(options)
             }
 
             verificationIdState.value = verificationId
@@ -74,11 +81,12 @@ class RealFriendshipRepository(
 
     override suspend fun verifyOTP(phoneNumber: String, otp: String): Result<String> =
         runCatching {
-            val verificationId = verificationIdState.value ?: throw IllegalStateException("OTP not sent")
+            val verificationId = verificationIdState.value ?: throw IllegalStateException("OTP not sent. Please send OTP first.")
             val credential = PhoneAuthProvider.getCredential(verificationId, otp)
             val task = auth.signInWithCredential(credential).await()
-            currentUserIdState.value = task.user?.uid
-            task.user?.uid ?: throw IllegalStateException("Auth failed")
+            val uid = task.user?.uid ?: throw IllegalStateException("Authentication failed")
+            currentUserIdState.value = uid
+            uid
         }
 
     override suspend fun createUserProfile(
